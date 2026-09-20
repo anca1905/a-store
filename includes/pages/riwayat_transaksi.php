@@ -6,7 +6,7 @@ $tglDari  = $conn->real_escape_string($tglDari);
 $tglSampai = $conn->real_escape_string($tglSampai);
 
 $qTrx = get_query($conn, "
-    SELECT p.no_faktur, p.tanggal_waktu, p.total_item, p.grand_total, p.nominal_bayar, p.kembalian
+    SELECT p.no_faktur, p.tanggal_waktu, p.total_item, p.grand_total, p.nominal_bayar, p.kembalian, p.metode_pembayaran
     FROM tbl_penjualan p
     WHERE DATE(p.tanggal_waktu) BETWEEN '$tglDari' AND '$tglSampai'
     ORDER BY p.tanggal_waktu DESC
@@ -42,6 +42,7 @@ $qTrx = get_query($conn, "
                         <th>No Faktur</th>
                         <th>Tanggal & Waktu</th>
                         <th>Total Item</th>
+                        <th>Metode Bayar</th>
                         <th>Grand Total</th>
                         <th>Dibayar</th>
                         <th>Kembalian</th>
@@ -56,6 +57,7 @@ $qTrx = get_query($conn, "
                         <td><strong><?= htmlspecialchars($row['no_faktur']) ?></strong></td>
                         <td><?= date('d M Y H:i', strtotime($row['tanggal_waktu'])) ?></td>
                         <td><?= $row['total_item'] ?> pcs</td>
+                        <td><?= htmlspecialchars($row['metode_pembayaran'] ?? 'Cash') ?></td>
                         <td style="font-weight:700; color:var(--primary-color);">Rp <?= number_format($row['grand_total'], 0, ',', '.') ?></td>
                         <td>Rp <?= number_format($row['nominal_bayar'], 0, ',', '.') ?></td>
                         <td>Rp <?= number_format($row['kembalian'], 0, ',', '.') ?></td>
@@ -67,7 +69,7 @@ $qTrx = get_query($conn, "
                         </td>
                     </tr>
                     <?php endwhile; else: ?>
-                    <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">Tidak ada transaksi di rentang ini.</td></tr>
+                    <tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">Tidak ada transaksi di rentang ini.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>

@@ -49,8 +49,8 @@ if ($qKatImg) {
 
 
 // ─── Definisi halaman per role ───────────────────────────────────────
-$pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'pengaturan', 'historis'];
-$pagesForKasir    = ['penjualan', 'riwayat_transaksi', 'data_barang_kasir', 'stok_barang'];
+$pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'pengaturan', 'historis', 'riwayat_transaksi'];
+$pagesForKasir    = ['dashboard', 'penjualan', 'riwayat_transaksi', 'data_barang_kasir', 'stok_barang'];
 
 $allValidPages = array_merge($pagesForPimpinan, $pagesForKasir);
 
@@ -385,9 +385,13 @@ if (isset($_GET['ajax_detail'])) {
                     </a>
 
                     <div class="nav-group-label">Transaksi</div>
-                    <a href="?page=historis" class="nav-item <?= $page === 'historis' ? 'active' : '' ?>">
+                    <a href="?page=riwayat_transaksi" class="nav-item <?= $page === 'riwayat_transaksi' ? 'active' : '' ?>">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Penjualan</span>
+                    </a>
+                    <a href="?page=historis" class="nav-item <?= $page === 'historis' ? 'active' : '' ?>">
+                        <i class="fa-solid fa-chart-column"></i>
+                        <span>Data Penjualan (Historis)</span>
                     </a>
                     <a href="?page=laporan" class="nav-item <?= $page === 'laporan' ? 'active' : '' ?>">
                         <i class="fa-solid fa-file-invoice"></i>
