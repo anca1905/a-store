@@ -115,9 +115,8 @@ if (isset($_GET['ajax_detail'])) {
         
         // Header Struk
         echo '<div style="text-align:center; margin-bottom:16px;">';
-        echo '<div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:4px;">';
-        echo '<h2 style="font-size:24px; font-weight:900; margin:0; letter-spacing:-1px;">A</h2>';
-        echo '<h2 style="font-size:18px; font-weight:800; margin:0;"> STORE</h2>';
+        echo '<div style="display:flex; justify-content:center; align-items:center; margin-bottom:4px;">';
+        echo '<h2 style="font-size:20px; font-weight:900; margin:0;">A STORE</h2>';
         echo '</div>';
         echo '<div style="font-size:10px;">Desa Anaiwoi, Kec. Tanggetada<br>Kab. Kolaka</div>';
         echo '</div>';
