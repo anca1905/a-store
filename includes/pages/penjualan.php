@@ -50,7 +50,7 @@ while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
                 </div>
             </div>
 
-            <form action="action_penjualan.php" method="POST" id="formPenjualan" onsubmit="return confirm('Apakah transaksi sudah pas/benar? Pastikan jumlah bayar dan item sudah sesuai.');">
+            <form action="action_penjualan.php" method="POST" id="formPenjualan" onsubmit="event.preventDefault(); openModal('modalConfirmTrx');">
                 <input type="hidden" name="cart_data" id="cartDataJson">
                 <input type="hidden" name="grand_total" id="inputGrandTotal" value="0">
                 <input type="hidden" name="total_item" id="inputTotalItem" value="0">
@@ -86,6 +86,20 @@ while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
                     Batal
                 </button>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirm Transaction -->
+<div id="modalConfirmTrx" class="modal">
+    <div class="modal-content" style="max-width:400px; text-align:center; padding:32px 24px;">
+        <i class="fa-solid fa-circle-question" style="font-size:48px; color:var(--primary-color); margin-bottom:16px;"></i>
+        <h3 style="font-size:20px; font-weight:700; margin-bottom:12px;">Konfirmasi Transaksi</h3>
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px; line-height:1.5;">Apakah transaksi sudah pas/benar? Pastikan jumlah bayar dan item sudah sesuai sebelum menyimpan.</p>
+        
+        <div style="display:flex; justify-content:center; gap:12px;">
+            <button type="button" class="btn btn-outline" style="padding:10px 24px;" onclick="closeModal('modalConfirmTrx')">Batal</button>
+            <button type="button" class="btn btn-primary" style="padding:10px 24px;" onclick="document.getElementById('formPenjualan').submit();">Ya, Simpan</button>
         </div>
     </div>
 </div>

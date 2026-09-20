@@ -135,6 +135,14 @@ if (isset($_GET['ajax_detail'])) {
         
         echo '<div style="border-bottom:1px dashed #000; margin-bottom:8px;"></div>';
         
+        // WA Text Generator - Header
+        $waText = "*- A STORE -*\n";
+        $waText .= "Desa Anaiwoi, Kec. Tanggetada\n\n";
+        $waText .= "No. Transaksi: " . htmlspecialchars($hdr['no_faktur']) . "\n";
+        $waText .= "Tanggal: " . date('d/m/Y H.i', strtotime($hdr['tanggal_waktu'])) . "\n";
+        $waText .= "Metode Bayar: " . htmlspecialchars($metode) . "\n\n";
+        $waText .= "--- DETAIL PESANAN ---\n";
+
         // Item List
         echo '<table style="width:100%; font-size:11px; border-collapse:collapse; margin-bottom:8px;">';
         echo '<thead><tr>';
@@ -147,18 +155,32 @@ if (isset($_GET['ajax_detail'])) {
         
         $no = 1;
         while ($d = $qDet->fetch_assoc()) {
+            $namaBrg = htmlspecialchars($d['nama_produk'] ?? $d['kode_barang']);
+            
             echo '<tr>';
-            echo '<td style="padding:4px 0; vertical-align:top;">' . $no++ . '</td>';
-            echo '<td style="padding:4px 0; padding-right:4px;">' . htmlspecialchars($d['nama_produk'] ?? $d['kode_barang']) . '</td>';
+            echo '<td style="padding:4px 0; vertical-align:top;">' . $no . '</td>';
+            echo '<td style="padding:4px 0; padding-right:4px;">' . $namaBrg . '</td>';
             echo '<td style="padding:4px 0; text-align:center; vertical-align:top;">' . $d['qty'] . '</td>';
             echo '<td style="padding:4px 0; text-align:right; vertical-align:top;">Rp' . number_format($d['harga_satuan'], 0, '', '.') . '</td>';
             echo '<td style="padding:4px 0; text-align:right; vertical-align:top;">Rp' . number_format($d['subtotal'], 0, '', '.') . '</td>';
             echo '</tr>';
+
+            $waText .= $no . ". " . $namaBrg . " x" . $d['qty'] . "\n";
+            $waText .= "   Rp " . number_format($d['subtotal'], 0, '', '.') . "\n";
+            $no++;
         }
         echo '</tbody></table>';
         
         echo '<div style="border-bottom:1px dashed #000; margin-bottom:8px;"></div>';
         
+        // WA Text Generator - Footer
+        $waText .= "----------------------\n";
+        $waText .= "Total Belanja: Rp " . number_format($hdr['grand_total'], 0, '', '.') . "\n";
+        $waText .= "Dibayar (" . htmlspecialchars($metode) . "): Rp " . number_format($hdr['nominal_bayar'], 0, '', '.') . "\n";
+        $waText .= "Kembalian: Rp " . number_format($hdr['kembalian'], 0, '', '.') . "\n\n";
+        $waText .= "Terima kasih atas kunjungan Anda!\n";
+        $waEncoded = rawurlencode($waText);
+
         // Total
         echo '<table style="width:100%; font-size:11px; border-collapse:collapse; margin-bottom:16px;">';
         echo '<tr><td style="text-align:right; padding:2px 10px 2px 0;">Total Item</td><td style="width:10px;">:</td><td style="width:65px; text-align:right;">' . $hdr['total_item'] . '</td></tr>';
@@ -171,9 +193,10 @@ if (isset($_GET['ajax_detail'])) {
         echo '<div style="text-align:center; font-size:11px; font-weight:bold;">Terima kasih atas kunjungan Anda!</div>';
         echo '</div>';
         
-        // Print Button
-        echo '<div style="text-align:center; margin-top:20px; border-top:1px solid #e2e8f0; padding-top:16px;">';
-        echo '<button onclick="printStruk()" style="background:#111; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif;"><i class="fa-solid fa-print"></i> Cetak Struk</button>';
+        // Buttons
+        echo '<div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:16px; display:flex; justify-content:center; gap:12px;">';
+        echo '<button onclick="printStruk()" style="background:#111; color:#fff; border:none; padding:10px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif;"><i class="fa-solid fa-print"></i> Cetak</button>';
+        echo '<a href="https://wa.me/?text=' . $waEncoded . '" target="_blank" style="background:#25D366; color:#fff; border:none; padding:10px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif; text-decoration:none;"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>';
         echo '</div>';
         
         echo '<script>
