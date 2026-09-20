@@ -117,7 +117,7 @@ $pageTitle = "Kelola Data Barang";
                                     <td><strong><?= $row['kode_barang'] ?></strong></td>
                                     <td><?= $row['nama_produk'] ?></td>
                                     <td><?= $row['kategori'] ?></td>
-                                    <td>Rp <?= number_format($row['harga'],0,',','.') ?></td>
+                                    <td>Rp <?= number_format($row['harga_jual'],0,',','.') ?></td>
                                     <td><?= $row['stok_min'] ?></td>
                                     <td><span class="status <?= $statusStok ?>"><?= $row['stok_aktual'] ?></span></td>
                                     <td>
@@ -164,7 +164,7 @@ $pageTitle = "Kelola Data Barang";
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label class="form-label">Harga Jual (Rp)</label>
-                        <input type="number" name="harga" class="form-control" required placeholder="Cth: 15000">
+                        <input type="number" name="harga_jual" class="form-control" required placeholder="Cth: 15000">
                     </div>
                 </div>
                 
@@ -221,7 +221,7 @@ $pageTitle = "Kelola Data Barang";
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label class="form-label">Harga Jual (Rp)</label>
-                        <input type="number" name="harga" id="edit_harga" class="form-control" required>
+                        <input type="number" name="harga_jual" id="edit_harga_jual" class="form-control" required>
                     </div>
                 </div>
                 
@@ -273,7 +273,7 @@ $pageTitle = "Kelola Data Barang";
             document.getElementById('edit_id').value = data.id_barang;
             document.getElementById('edit_kode').value = data.kode_barang;
             document.getElementById('edit_nama').value = data.nama_produk;
-            document.getElementById('edit_harga').value = data.harga;
+            document.getElementById('edit_harga_jual').value = data.harga_jual;
             document.getElementById('edit_kategori').value = data.kategori;
             document.getElementById('edit_stok_aktual').value = data.stok_aktual;
             document.getElementById('edit_stok_min').value = data.stok_min;

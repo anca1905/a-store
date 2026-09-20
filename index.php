@@ -5,6 +5,19 @@ include 'cek_sesi.php';
 
 $role = $_SESSION['role'] ?? 'Kasir';
 
+// Auto-migrate foto_kategori
+$checkKat = $conn->query("SHOW COLUMNS FROM tbl_kategori LIKE 'foto_kategori'");
+if ($checkKat && $checkKat->num_rows == 0) {
+    $conn->query("ALTER TABLE tbl_kategori ADD COLUMN foto_kategori VARCHAR(255) DEFAULT NULL");
+}
+
+// Auto-migrate metode_pembayaran
+$checkMetode = $conn->query("SHOW COLUMNS FROM tbl_penjualan LIKE 'metode_pembayaran'");
+if ($checkMetode && $checkMetode->num_rows == 0) {
+    $conn->query("ALTER TABLE tbl_penjualan ADD COLUMN metode_pembayaran VARCHAR(50) DEFAULT 'Cash'");
+}
+
+
 // ─── Definisi halaman per role ───────────────────────────────────────
 $pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'pengaturan', 'historis'];
 $pagesForKasir    = ['penjualan', 'riwayat_transaksi', 'data_barang_kasir', 'stok_barang'];
@@ -56,7 +69,7 @@ if ($role === 'Pimpinan') {
 // ─── AJAX Handler Detail Transaksi (Mode Struk) ────────────────────────
 if (isset($_GET['ajax_detail'])) {
     $val = $conn->real_escape_string($_GET['ajax_detail']);
-    $qHdr = get_query($conn, "SELECT id_penjualan, no_faktur, tanggal_waktu, total_item, grand_total, nominal_bayar, kembalian FROM tbl_penjualan WHERE id_penjualan = '$val' OR no_faktur = '$val'");
+    $qHdr = get_query($conn, "SELECT id_penjualan, no_faktur, tanggal_waktu, total_item, grand_total, nominal_bayar, kembalian, metode_pembayaran FROM tbl_penjualan WHERE id_penjualan = '$val' OR no_faktur = '$val'");
     if ($qHdr && $qHdr->num_rows > 0) {
         $hdr = $qHdr->fetch_assoc();
         $idTrx = $hdr['id_penjualan'];
@@ -86,6 +99,8 @@ if (isset($_GET['ajax_detail'])) {
         echo '<tr><td style="width:90px; padding:2px 0;">No. Transaksi</td><td style="width:10px;">:</td><td>' . htmlspecialchars($hdr['no_faktur']) . '</td></tr>';
         echo '<tr><td style="padding:2px 0;">Tanggal</td><td>:</td><td>' . date('d/m/Y H.i', strtotime($hdr['tanggal_waktu'])) . '</td></tr>';
         echo '<tr><td style="padding:2px 0;">Kasir</td><td>:</td><td>Kasir</td></tr>';
+        $metode = isset($hdr['metode_pembayaran']) ? $hdr['metode_pembayaran'] : 'Cash';
+        echo '<tr><td style="padding:2px 0;">Metode Bayar</td><td>:</td><td>' . htmlspecialchars($metode) . '</td></tr>';
         echo '</table>';
         
         echo '<div style="border-bottom:1px dashed #000; margin-bottom:8px;"></div>';

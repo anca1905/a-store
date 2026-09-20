@@ -5,7 +5,7 @@ include 'cek_sesi.php';
 
 // Fungsi upload foto
 function uploadFoto($file) {
-    $targetDir = "assets/img/barang/";
+    $targetDir = __DIR__ . "/assets/img/barang/";
     if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
 
     $fileName = time() . '_' . str_replace(' ', '_', basename($file["name"]));
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $qOld = get_query($conn, "SELECT foto_barang FROM tbl_barang WHERE id_barang=$id");
                 $rOld = $qOld->fetch_assoc();
                 if ($rOld && $rOld['foto_barang']) {
-                    $oldPath = "assets/img/barang/" . $rOld['foto_barang'];
+                    $oldPath = __DIR__ . "/assets/img/barang/" . $rOld['foto_barang'];
                     if (file_exists($oldPath)) unlink($oldPath);
                 }
                 $fotoSql = ", foto_barang='" . $conn->real_escape_string($up) . "'";
@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($qOld->num_rows > 0) {
             $rOld = $qOld->fetch_assoc();
             if ($rOld['foto_barang']) {
-                $oldPath = "assets/img/barang/" . $rOld['foto_barang'];
+                $oldPath = __DIR__ . "/assets/img/barang/" . $rOld['foto_barang'];
                 if (file_exists($oldPath)) unlink($oldPath);
             }
         }

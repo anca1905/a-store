@@ -27,7 +27,7 @@ if ($tampil) {
 
     // Tabel transaksi
     $qTrx = get_query($conn, "
-        SELECT id_penjualan, no_faktur, tanggal_waktu, total_item, grand_total
+        SELECT id_penjualan, no_faktur, tanggal_waktu, total_item, grand_total, metode_pembayaran
         FROM tbl_penjualan
         WHERE DATE_FORMAT(tanggal_waktu, '%Y-%m') = '$p'
         ORDER BY tanggal_waktu DESC
@@ -115,6 +115,7 @@ $labelPeriode = $tampil
                         <th>Tanggal Transaksi</th>
                         <th>No Faktur</th>
                         <th>Item</th>
+                        <th>Metode Bayar</th>
                         <th>Total</th>
                         <th class="no-print">Aksi</th>
                     </tr>
@@ -129,6 +130,7 @@ $labelPeriode = $tampil
                         <td><?= date('d M Y H:i', strtotime($row['tanggal_waktu'])) ?></td>
                         <td><strong><?= htmlspecialchars($row['no_faktur']) ?></strong></td>
                         <td><?= $row['total_item'] ?> pcs</td>
+                        <td><?= htmlspecialchars($row['metode_pembayaran'] ?? 'Cash') ?></td>
                         <td style="font-weight:700; color:var(--primary-color);">
                             Rp <?= number_format($row['grand_total'], 0, ',', '.') ?>
                         </td>
@@ -142,7 +144,7 @@ $labelPeriode = $tampil
                     </tr>
                     <?php endwhile; else: ?>
                     <tr>
-                        <td colspan="6" style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">
                             <i class="fa-solid fa-inbox" style="font-size:28px; display:block; margin-bottom:8px; opacity:0.4;"></i>
                             Tidak ada transaksi pada periode <?= htmlspecialchars($labelPeriode) ?>.
                         </td>

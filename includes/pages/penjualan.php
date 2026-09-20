@@ -50,7 +50,7 @@ while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
                 </div>
             </div>
 
-            <form action="action_penjualan.php" method="POST" id="formPenjualan">
+            <form action="action_penjualan.php" method="POST" id="formPenjualan" onsubmit="return confirm('Apakah transaksi sudah pas/benar? Pastikan jumlah bayar dan item sudah sesuai.');">
                 <input type="hidden" name="cart_data" id="cartDataJson">
                 <input type="hidden" name="grand_total" id="inputGrandTotal" value="0">
                 <input type="hidden" name="total_item" id="inputTotalItem" value="0">
@@ -59,6 +59,14 @@ while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; font-size:15px; font-weight:800;">
                     <span>Total Belanja</span>
                     <span id="txtTotal" style="color:var(--primary-color); font-size:18px;">Rp 0</span>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <label style="font-size:14px; font-weight:700; color:var(--text-main);">Metode Pembayaran</label>
+                    <select name="metode_pembayaran" class="form-control" style="width:160px; font-size:14px; font-weight:bold; padding:8px;" required>
+                        <option value="Cash">Cash</option>
+                        <option value="Transfer">Transfer</option>
+                    </select>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -265,4 +273,34 @@ function calculateKembalian() {
 
 // Init run
 renderProducts(dbBarang);
+
+<?php if (isset($_GET['print_id'])): ?>
+window.onload = function() {
+    lihatDetail('<?= htmlspecialchars($_GET['print_id'], ENT_QUOTES) ?>');
+};
+<?php endif; ?>
+
+function lihatDetail(noFaktur) {
+    document.getElementById('modalDetailTitle').textContent = 'Struk — ' + noFaktur;
+    document.getElementById('modalDetailBody').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    openModal('modalDetail');
+
+    fetch('index.php?page=penjualan&ajax_detail=' + encodeURIComponent(noFaktur))
+        .then(r => r.text())
+        .then(html => { document.getElementById('modalDetailBody').innerHTML = html; });
+}
 </script>
+
+<!-- Modal Detail Transaksi -->
+<div id="modalDetail" class="modal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h3 id="modalDetailTitle">Cetak Struk</h3>
+            <button class="close-btn" onclick="closeModal('modalDetail')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div id="modalDetailBody" style="min-height:100px; display:flex; align-items:center; justify-content:center;">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+    </div>
+</div>
+
