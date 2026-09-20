@@ -194,9 +194,10 @@ if (isset($_GET['ajax_detail'])) {
         echo '</div>';
         
         // Buttons
-        echo '<div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:16px; display:flex; justify-content:center; gap:12px;">';
-        echo '<button onclick="printStruk()" style="background:#111; color:#fff; border:none; padding:10px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif;"><i class="fa-solid fa-print"></i> Cetak</button>';
-        echo '<a href="https://wa.me/?text=' . $waEncoded . '" target="_blank" style="background:#25D366; color:#fff; border:none; padding:10px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif; text-decoration:none;"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>';
+        echo '<div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">';
+        echo '<button onclick="printStruk()" style="background:#111; color:#fff; border:none; padding:10px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif;"><i class="fa-solid fa-print"></i> Cetak</button>';
+        echo '<a href="https://wa.me/?text=' . $waEncoded . '" target="_blank" style="background:#25D366; color:#fff; border:none; padding:10px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif; text-decoration:none;"><i class="fa-brands fa-whatsapp"></i> Teks WA</a>';
+        echo '<button onclick="shareStrukImage(this, \'' . htmlspecialchars($hdr['no_faktur']) . '\')" style="background:#0ea5e9; color:#fff; border:none; padding:10px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-family:\'Outfit\', sans-serif;"><i class="fa-solid fa-image"></i> Gambar</button>';
         echo '</div>';
         
         echo '<script>
@@ -207,6 +208,55 @@ if (isset($_GET['ajax_detail'])) {
             window.print();
             document.body.innerHTML = originalContents;
             location.reload();
+        }
+
+        function shareStrukImage(btn, noFaktur) {
+            // Load html2canvas dynamically if not loaded
+            if (typeof html2canvas === "undefined") {
+                var script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+                script.onload = () => processStrukImage(btn, noFaktur);
+                document.head.appendChild(script);
+            } else {
+                processStrukImage(btn, noFaktur);
+            }
+        }
+
+        function processStrukImage(btn, noFaktur) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "<i class=\'fa-solid fa-spinner fa-spin\'></i> Tunggu...";
+            btn.disabled = true;
+
+            const area = document.getElementById("strukPrintArea");
+            html2canvas(area, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+                canvas.toBlob(function(blob) {
+                    const file = new File([blob], "Struk_" + noFaktur + ".png", { type: "image/png" });
+                    
+                    // Coba Web Share API (Mobile)
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        navigator.share({
+                            files: [file],
+                            title: "Struk " + noFaktur,
+                            text: "Berikut adalah struk transaksi Anda."
+                        }).catch(console.error).finally(() => resetBtn(btn, originalText));
+                    } else {
+                        // Jika Desktop / tidak support, otomatis download
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "Struk_" + noFaktur + ".png";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        alert("Gambar struk berhasil diunduh! Anda bisa melampirkannya (Drag & Drop) langsung ke chat WhatsApp.");
+                        resetBtn(btn, originalText);
+                    }
+                }, "image/png");
+            });
+        }
+        
+        function resetBtn(btn, text) {
+            btn.innerHTML = text;
+            btn.disabled = false;
         }
         </script>';
         
