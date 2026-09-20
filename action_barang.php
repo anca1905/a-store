@@ -8,7 +8,9 @@ function uploadFoto($file) {
     $targetDir = __DIR__ . "/assets/img/barang/";
     if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
 
-    $fileName = time() . '_' . str_replace(' ', '_', basename($file["name"]));
+    $fileName = basename($file["name"]);
+    $fileName = preg_replace('/[^a-zA-Z0-9\.\-_]/', '_', $fileName);
+    $fileName = time() . '_' . $fileName;
     $targetPath = $targetDir . $fileName;
     $ext = strtolower(pathinfo($targetPath, PATHINFO_EXTENSION));
 

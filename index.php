@@ -17,6 +17,36 @@ if ($checkMetode && $checkMetode->num_rows == 0) {
     $conn->query("ALTER TABLE tbl_penjualan ADD COLUMN metode_pembayaran VARCHAR(50) DEFAULT 'Cash'");
 }
 
+// Auto-fix filenames
+$dirImg = __DIR__ . '/assets/img/barang/';
+$qImg = $conn->query("SELECT id_barang, foto_barang FROM tbl_barang WHERE foto_barang IS NOT NULL");
+if ($qImg) {
+    while ($row = $qImg->fetch_assoc()) {
+        $old = $row['foto_barang'];
+        if (preg_match('/[^a-zA-Z0-9\.\-_]/', $old)) {
+            $new = preg_replace('/[^a-zA-Z0-9\.\-_]/', '_', $old);
+            if (file_exists($dirImg . $old)) {
+                rename($dirImg . $old, $dirImg . $new);
+                $conn->query("UPDATE tbl_barang SET foto_barang='$new' WHERE id_barang={$row['id_barang']}");
+            }
+        }
+    }
+}
+$dirKategori = __DIR__ . '/assets/img/kategori/';
+$qKatImg = $conn->query("SELECT id_kategori, foto_kategori FROM tbl_kategori WHERE foto_kategori IS NOT NULL");
+if ($qKatImg) {
+    while ($row = $qKatImg->fetch_assoc()) {
+        $old = $row['foto_kategori'];
+        if (preg_match('/[^a-zA-Z0-9\.\-_]/', $old)) {
+            $new = preg_replace('/[^a-zA-Z0-9\.\-_]/', '_', $old);
+            if (file_exists($dirKategori . $old)) {
+                rename($dirKategori . $old, $dirKategori . $new);
+                $conn->query("UPDATE tbl_kategori SET foto_kategori='$new' WHERE id_kategori={$row['id_kategori']}");
+            }
+        }
+    }
+}
+
 
 // ─── Definisi halaman per role ───────────────────────────────────────
 $pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'pengaturan', 'historis'];
