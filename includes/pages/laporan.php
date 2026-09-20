@@ -101,7 +101,15 @@ $labelPeriode = $tampil
 
     <!-- ── TABEL TRANSAKSI ────────────────────────── -->
     <div class="chart-card" id="areaCetak">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        
+        <!-- Header Khusus Cetak -->
+        <div id="printHeader" style="display:none; text-align:center; border-bottom:3px solid #000; padding-bottom:15px; margin-bottom:20px;">
+            <h2 style="margin:0; font-size:24px; font-weight:bold; color:#000; text-transform:uppercase;">A STORE</h2>
+            <p style="margin:5px 0 0; font-size:14px; color:#000;">Laporan Riwayat Penjualan & Transaksi Kasir</p>
+            <p style="margin:5px 0 0; font-size:14px; color:#000;">Periode: <strong><?= htmlspecialchars($labelPeriode) ?></strong></p>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;" class="no-print">
             <h3 style="font-size:15px; font-weight:700;">
                 Laporan Penjualan — <?= htmlspecialchars($labelPeriode) ?>
             </h3>
@@ -153,6 +161,15 @@ $labelPeriode = $tampil
                 </tbody>
             </table>
         </div>
+
+        <!-- Footer Khusus Cetak -->
+        <div id="printFooter" style="display:none; margin-top:50px; font-size:14px; color:#000;">
+            <div style="float:right; text-align:center; width:250px;">
+                <p style="margin:0 0 70px 0;">Makassar, <?= date('d M Y') ?></p>
+                <p style="margin:0; font-weight:bold; border-top:1px solid #000; padding-top:8px;">Pimpinan A STORE</p>
+            </div>
+            <div style="clear:both;"></div>
+        </div>
     </div>
 
     <?php else: ?>
@@ -182,10 +199,32 @@ $labelPeriode = $tampil
 <!-- Print styles -->
 <style>
     @media print {
+        @page { size: A4 portrait; margin: 20mm; }
+        body { background: #fff !important; }
         body * { visibility: hidden; }
+        
         #areaCetak, #areaCetak * { visibility: visible; }
-        #areaCetak { position: fixed; top: 0; left: 0; width: 100%; }
+        
+        #areaCetak { 
+            position: absolute; 
+            top: 0; left: 0; width: 100%;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        #printHeader, #printFooter { display: block !important; }
         .no-print { display: none !important; }
+
+        /* Tabel rapih untuk cetak */
+        .data-table { border-collapse: collapse; width: 100%; font-size: 13px !important; color: #000 !important; }
+        .data-table th, .data-table td { border: 1px solid #000 !important; padding: 10px !important; color: #000 !important; }
+        .data-table th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; color-adjust: exact; font-weight: bold !important; text-transform: uppercase; }
+        
+        /* Remove status color styling on print to keep it formal */
+        .data-table td[style] { color: #000 !important; font-weight: normal !important; }
     }
 </style>
 
