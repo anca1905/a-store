@@ -252,6 +252,71 @@ if(isset($_SESSION['user_id'])) {
             75% { transform: translateX(5px); }
         }
 
+        /* --- Social Links --- */
+        .social-links {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .social-links p {
+            color: var(--text-muted, #64748b);
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .social-icons a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #F9FAFB;
+            color: var(--text-light, #94a3b8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 20px;
+            border: 1px solid var(--border-color, #e2e8f0);
+        }
+
+        .social-icons a.instagram:hover {
+            background: #E1306C;
+            color: white;
+            border-color: #E1306C;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(225, 48, 108, 0.3);
+        }
+
+        .social-icons a.tiktok:hover {
+            background: #000000;
+            color: white;
+            border-color: #000000;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .social-icons a.whatsapp:hover {
+            background: #25D366;
+            color: white;
+            border-color: #25D366;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+        }
+
+        .social-icons a.facebook:hover {
+            background: #1877F2;
+            color: white;
+            border-color: #1877F2;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(24, 119, 242, 0.3);
+        }
+
         /* Responsive */
         @media (max-width: 992px) {
             .login-branding {
@@ -307,6 +372,18 @@ if(isset($_SESSION['user_id'])) {
                         Login
                     </button>
                 </form>
+
+                <!-- Social Media Links -->
+                <div class="social-links">
+                    <p>Temukan kami di:</p>
+                    <div class="social-icons">
+                        <a href="#" class="instagram" title="Instagram" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="#" class="tiktok" title="TikTok" target="_blank"><i class="fa-brands fa-tiktok"></i></a>
+                        <a href="#" class="facebook" title="Facebook" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="#" class="whatsapp" title="WhatsApp" target="_blank"><i class="fa-brands fa-whatsapp"></i></a>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
