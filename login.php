@@ -377,10 +377,10 @@ if(isset($_SESSION['user_id'])) {
                 <div class="social-links">
                     <p>Temukan kami di:</p>
                     <div class="social-icons">
-                        <a href="#" class="instagram" title="Instagram" target="_blank"><i class="fa-brands fa-instagram"></i></a>
-                        <a href="#" class="tiktok" title="TikTok" target="_blank"><i class="fa-brands fa-tiktok"></i></a>
-                        <a href="#" class="facebook" title="Facebook" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
-                        <a href="#" class="whatsapp" title="WhatsApp" target="_blank"><i class="fa-brands fa-whatsapp"></i></a>
+                        <a href="https://www.instagram.com/astore_tanggetada/" class="instagram" title="Instagram" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="https://www.tiktok.com/@astore_tanggetada?_r=1&_t=ZS-9A4BlUjecMu" class="tiktok" title="TikTok" target="_blank"><i class="fa-brands fa-tiktok"></i></a>
+                        <a href="https://www.facebook.com/share/1BzeEuMQUm/" class="facebook" title="Facebook" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="https://web.whatsapp.com/6285280468750" class="whatsapp" title="WhatsApp" target="_blank"><i class="fa-brands fa-whatsapp"></i></a>
                     </div>
                 </div>
 
