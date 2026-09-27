@@ -44,28 +44,7 @@ if(isset($_SESSION['user_id'])) {
             overflow: hidden;
         }
 
-        /* Abstract patterns for premium feel */
-        .login-branding::before {
-            content: '';
-            position: absolute;
-            width: 500px;
-            height: 500px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 50%;
-            top: -100px;
-            left: -100px;
-        }
-
-        .login-branding::after {
-            content: '';
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 50%;
-            bottom: -50px;
-            right: -50px;
-        }
+        /* Abstract patterns removed as per user request */
 
         .brand-wrapper {
             position: relative;
