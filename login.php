@@ -33,7 +33,7 @@ if(isset($_SESSION['user_id'])) {
         /* --- Left Side Branding --- */
         .login-branding {
             flex: 1.2;
-            background: #6e0808;
+            background: #4e0707;
             display: flex;
             flex-direction: column;
             align-items: center;
