@@ -70,7 +70,8 @@ ul {
 /* --- App Layout --- */
 .app-container {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     background-color: var(--bg-body);
 }
 
@@ -80,10 +81,9 @@ ul {
     color: #FFFFFF;
     display: flex;
     flex-direction: column;
-    position: sticky;
-    top: 0;
     height: 100vh;
     z-index: 100;
+    overflow-y: auto;
 }
 
 .sidebar-header {
@@ -154,6 +154,7 @@ ul {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    overflow: hidden;
 }
 
 .main-header {
@@ -163,6 +164,7 @@ ul {
     align-items: center;
     justify-content: space-between;
     background-color: transparent;
+    flex-shrink: 0;
 }
 
 .page-title {
@@ -204,6 +206,8 @@ ul {
 
 .content-area {
     padding: 0 40px 40px 40px;
+    flex: 1;
+    overflow-y: auto;
 }
 
 /* ═══════ KPI CARDS MOCKUP STYLE ═══════ */

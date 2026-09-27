@@ -450,7 +450,7 @@ if (isset($_GET['ajax_detail'])) {
 
         <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
         <div class="main-wrapper">
-            <header class="main-header" style="background:#fff; border-bottom:1px solid var(--border-color); margin-bottom:24px; padding:0 32px;">
+            <header class="main-header" style="background:#fff; border-bottom:1px solid var(--border-color); padding:0 32px; z-index: 10;">
                 <h2 class="page-title" style="font-size:20px;"><?= htmlspecialchars($pageTitle) ?></h2>
                 <div class="user-controls" style="display:flex; align-items:center; gap:20px;">
                     <!-- Notification Bell -->
@@ -495,7 +495,7 @@ if (isset($_GET['ajax_detail'])) {
                 </div>
             </header>
 
-            <main class="content-area" style="padding:0 32px 40px 32px;">
+            <main class="content-area" style="padding:24px 32px 40px 32px;">
                 <?php if (isset($_GET['error'])): ?>
                     <div class="flash-error">
                         <i class="fa-solid fa-circle-exclamation"></i>
