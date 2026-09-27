@@ -453,17 +453,44 @@ if (isset($_GET['ajax_detail'])) {
             <header class="main-header" style="background:#fff; border-bottom:1px solid var(--border-color); margin-bottom:24px; padding:0 32px;">
                 <h2 class="page-title" style="font-size:20px;"><?= htmlspecialchars($pageTitle) ?></h2>
                 <div class="user-controls" style="display:flex; align-items:center; gap:20px;">
-                    <div class="notification-trigger" style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:var(--bg-body); border-radius:50%; cursor:pointer;">
-                        <i class="fa-solid fa-bell" style="color:var(--text-muted); font-size:16px;"></i>
-                        <span class="badge" style="position:absolute; top:-2px; right:-2px; width:16px; height:16px; background:var(--primary-dark); color:#fff; font-size:9px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff;">3</span>
-                    </div>
-                    <div class="user-profile" style="display:flex; align-items:center; gap:12px; padding:4px 8px; cursor:pointer;">
-                        <img src="https://ui-avatars.com/api/?name=<?= urlencode($namaUser) ?>&background=111111&color=fff&rounded=true" alt="Avatar" class="avatar" style="width:36px; height:36px; border-radius:50%;">
-                        <div class="user-info" style="display:flex; flex-direction:column; text-align:left;">
-                            <span class="user-name" style="font-size:13px; font-weight:700; color:var(--text-main); line-height:1.2;"><?= htmlspecialchars($namaUser) ?></span>
-                            <span class="user-role" style="font-size:11px; color:var(--text-muted);"><?= htmlspecialchars($roleUser) ?></span>
+                    <!-- Notification Bell -->
+                    <div class="notification-wrapper" style="position:relative;" onclick="toggleNotifDropdown(event)">
+                        <div class="notification-trigger" style="position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:var(--bg-body); border-radius:50%; cursor:pointer;">
+                            <i class="fa-solid fa-bell" style="color:var(--text-muted); font-size:16px;"></i>
+                            <?php if($jumlahKritis > 0): ?>
+                            <span class="badge" style="position:absolute; top:-2px; right:-2px; width:16px; height:16px; background:var(--primary-dark); color:#fff; font-size:9px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff;"><?= $jumlahKritis ?></span>
+                            <?php endif; ?>
                         </div>
-                        <i class="fa-solid fa-chevron-down dropdown-icon" style="font-size:10px; color:var(--text-muted); margin-left:4px;"></i>
+                        <div id="notifDropdown" style="display:none; position:absolute; top:100%; right:-10px; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.05); min-width:250px; z-index:100; margin-top:10px; overflow:hidden;">
+                            <div style="padding:12px 16px; font-weight:700; border-bottom:1px solid var(--border-color); font-size:13px; color:var(--text-main);">Notifikasi</div>
+                            <?php if($jumlahKritis > 0): ?>
+                                <a href="?page=stok" style="display:flex; align-items:center; gap:12px; padding:12px 16px; text-decoration:none; color:var(--text-main); border-bottom:1px solid var(--border-color); background:var(--danger-light);">
+                                    <div style="width:32px; height:32px; border-radius:50%; background:var(--danger-color); color:white; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                    <div style="flex:1;">
+                                        <div style="font-size:13px; font-weight:600;">Stok Kritis</div>
+                                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Ada <?= $jumlahKritis ?> barang menipis</div>
+                                    </div>
+                                </a>
+                            <?php else: ?>
+                                <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">Tidak ada notifikasi baru.</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- User Profile Dropdown -->
+                    <div class="profile-wrapper" style="position:relative;" onclick="toggleProfileDropdown(event)">
+                        <div class="user-profile" style="display:flex; align-items:center; gap:12px; padding:4px 8px; cursor:pointer;">
+                            <img src="https://ui-avatars.com/api/?name=<?= urlencode($namaUser) ?>&background=111111&color=fff&rounded=true" alt="Avatar" class="avatar" style="width:36px; height:36px; border-radius:50%;">
+                            <div class="user-info" style="display:flex; flex-direction:column; text-align:left;">
+                                <span class="user-name" style="font-size:13px; font-weight:700; color:var(--text-main); line-height:1.2;"><?= htmlspecialchars($namaUser) ?></span>
+                                <span class="user-role" style="font-size:11px; color:var(--text-muted);"><?= htmlspecialchars($roleUser) ?></span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down dropdown-icon" style="font-size:10px; color:var(--text-muted); margin-left:4px;"></i>
+                        </div>
+                        <div id="profileDropdown" style="display:none; position:absolute; top:100%; right:0; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.05); min-width:180px; z-index:100; margin-top:10px; overflow:hidden;">
+                            <a href="?page=pengaturan" style="display:block; padding:12px 16px; color:var(--text-main); text-decoration:none; font-size:13px; border-bottom:1px solid var(--border-color);"><i class="fa-solid fa-gear" style="width:20px; color:var(--text-muted);"></i> Pengaturan</a>
+                            <a href="logout.php" style="display:block; padding:12px 16px; color:var(--danger-color); text-decoration:none; font-size:13px;"><i class="fa-solid fa-right-from-bracket" style="width:20px;"></i> Keluar</a>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -491,10 +518,34 @@ if (isset($_GET['ajax_detail'])) {
     <script>
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        // ─── Dropdown Functions ─────────────────────────────────────────────
+        function toggleNotifDropdown(e) {
+            e.stopPropagation();
+            const notif = document.getElementById('notifDropdown');
+            const profile = document.getElementById('profileDropdown');
+            profile.style.display = 'none'; // Close the other dropdown
+            notif.style.display = notif.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleProfileDropdown(e) {
+            e.stopPropagation();
+            const profile = document.getElementById('profileDropdown');
+            const notif = document.getElementById('notifDropdown');
+            notif.style.display = 'none'; // Close the other dropdown
+            profile.style.display = profile.style.display === 'none' ? 'block' : 'none';
+        }
+
         document.addEventListener('click', function(e) {
+            // Close modals
             if (e.target.classList.contains('modal')) {
                 e.target.classList.remove('active');
             }
+            
+            // Close dropdowns
+            const profile = document.getElementById('profileDropdown');
+            const notif = document.getElementById('notifDropdown');
+            if (profile && profile.style.display === 'block') profile.style.display = 'none';
+            if (notif && notif.style.display === 'block') notif.style.display = 'none';
         });
 
         // ─── Global Struk Functions ─────────────────────────────────────────
