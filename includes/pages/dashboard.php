@@ -74,7 +74,7 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
 
     <!-- KPI GRID -->
     <div class="kpi-grid">
-        <div class="kpi-card">
+        <div class="kpi-card" onclick="window.location.href='?page=riwayat_transaksi'" style="cursor: pointer;">
             <span class="kpi-label">Total Penjualan Hari Ini</span>
             <div class="kpi-value-row">
                 <div class="kpi-value-group">
@@ -85,7 +85,7 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
             </div>
         </div>
 
-        <div class="kpi-card">
+        <div class="kpi-card" onclick="window.location.href='?page=riwayat_transaksi'" style="cursor: pointer;">
             <span class="kpi-label">Total Transaksi Hari Ini</span>
             <div class="kpi-value-row">
                 <div class="kpi-value-group">
@@ -96,7 +96,7 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
             </div>
         </div>
 
-        <div class="kpi-card">
+        <div class="kpi-card" onclick="window.location.href='?page=stok'" style="cursor: pointer;">
             <span class="kpi-label">Stok Barang</span>
             <div class="kpi-value-row">
                 <div class="kpi-value-group">
@@ -107,7 +107,7 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
             </div>
         </div>
 
-        <div class="kpi-card">
+        <div class="kpi-card" onclick="window.location.href='?page=des'" style="cursor: pointer;">
             <span class="kpi-label">Prediksi Stok Minggu Depan</span>
             <div class="kpi-value-row">
                 <div class="kpi-value-group">
