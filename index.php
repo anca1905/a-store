@@ -49,7 +49,7 @@ if ($qKatImg) {
 
 
 // ─── Definisi halaman per role ───────────────────────────────────────
-$pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'pengaturan', 'historis', 'riwayat_transaksi'];
+$pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'des_kategori', 'pengaturan', 'historis', 'riwayat_transaksi'];
 $pagesForKasir    = ['dashboard', 'penjualan', 'riwayat_transaksi', 'data_barang_kasir', 'stok_barang'];
 
 $allValidPages = array_merge($pagesForPimpinan, $pagesForKasir);
@@ -77,7 +77,8 @@ $pageLabels = [
     'riwayat_stok'      => ['icon' => 'fa-clock-rotate-left',  'title' => 'Riwayat Stok'],
     'historis'          => ['icon' => 'fa-clock-rotate-left',  'title' => 'Data Penjualan'],
     'laporan'           => ['icon' => 'fa-file-invoice',       'title' => 'Laporan Penjualan'],
-    'des'               => ['icon' => 'fa-chart-line',         'title' => 'Peramalan Stok'],
+    'des'               => ['icon' => 'fa-chart-line',         'title' => 'Peramalan Berdasarkan Barang'],
+    'des_kategori'      => ['icon' => 'fa-chart-line',         'title' => 'Peramalan Berdasarkan Kategori'],
     'pengaturan'        => ['icon' => 'fa-gear',               'title' => 'Pengaturan'],
     'penjualan'         => ['icon' => 'fa-cash-register',      'title' => 'Penjualan'],
     'riwayat_transaksi' => ['icon' => 'fa-clock-rotate-left',  'title' => 'Riwayat Transaksi'],
@@ -409,10 +410,17 @@ if (isset($_GET['ajax_detail'])) {
                         <i class="fa-solid fa-file-invoice"></i>
                         <span>Laporan Penjualan</span>
                     </a>
-                    <a href="?page=des" class="nav-item <?= $page === 'des' ? 'active' : '' ?>">
-                        <i class="fa-solid fa-chart-line"></i>
-                        <span>Peramalan Stok</span>
-                    </a>
+                    <div class="nav-item-dropdown" onclick="toggleSubmenu('submenu-peramalan')">
+                        <div class="nav-item <?= in_array($page, ['des', 'des_kategori']) ? 'active' : '' ?>" style="margin-bottom:0; cursor:pointer;">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span style="flex:1;">Peramalan Stok</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size:10px; width:auto; text-align:right;"></i>
+                        </div>
+                        <div id="submenu-peramalan" style="display:<?= in_array($page, ['des', 'des_kategori']) ? 'block' : 'none' ?>; padding-left:32px; padding-top:4px; margin-bottom:4px; flex-direction:column;">
+                            <a href="?page=des_kategori" class="nav-item <?= $page === 'des_kategori' ? 'active' : '' ?>" style="padding: 8px 12px; font-size: 13px;">Berdasarkan Kategori</a>
+                            <a href="?page=des" class="nav-item <?= $page === 'des' ? 'active' : '' ?>" style="padding: 8px 12px; font-size: 13px;">Berdasarkan Barang</a>
+                        </div>
+                    </div>
                     <a href="?page=pengaturan" class="nav-item <?= $page === 'pengaturan' ? 'active' : '' ?>">
                         <i class="fa-solid fa-gear"></i>
                         <span>Pengaturan</span>
@@ -518,6 +526,10 @@ if (isset($_GET['ajax_detail'])) {
     <script>
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function toggleSubmenu(id) { 
+            const el = document.getElementById(id); 
+            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; 
+        }
         // ─── Dropdown Functions ─────────────────────────────────────────────
         function toggleNotifDropdown(e) {
             e.stopPropagation();

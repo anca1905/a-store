@@ -1,13 +1,13 @@
 <?php
-// Halaman: Peramalan Stok — Double Exponential Smoothing (DES)
-$kode_barang = $conn->real_escape_string($_GET['kode_barang'] ?? '');
+// Halaman: Peramalan Stok — Double Exponential Smoothing (DES) Kategori
+$id_kategori = isset($_GET['id_kategori']) ? (int)$_GET['id_kategori'] : 0;
 $n_periode   = max(4, (int)($_GET['n_periode'] ?? 8));   // jumlah minggu data historis
 $alpha       = isset($_GET['alpha']) ? floatval($_GET['alpha']) : 0.3;
 $alpha       = max(0.01, min(0.99, $alpha)); // clamp 0.01–0.99
-$hitung      = isset($_GET['kode_barang']) && $kode_barang !== '';
+$hitung      = isset($_GET['id_kategori']) && $id_kategori > 0;
 
-// Ambil daftar barang
-$qB = get_query($conn, "SELECT kode_barang, nama_produk FROM tbl_barang ORDER BY nama_produk");
+// Ambil daftar kategori
+$qK = get_query($conn, "SELECT id_kategori, nama_kategori FROM tbl_kategori ORDER BY nama_kategori");
 
 // Logika Peramalan DES (Brown's Double Exponential Smoothing)
 $rows = [];
@@ -30,7 +30,8 @@ if ($hitung) {
                 SUM(d.qty) as total_qty
             FROM tbl_detail_penjualan d
             JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
-            WHERE d.kode_barang = '$kode_barang'
+            JOIN tbl_barang b ON d.kode_barang = b.kode_barang
+            WHERE b.id_kategori = $id_kategori
             GROUP BY minggu
             ORDER BY minggu DESC
             LIMIT $n_periode";
@@ -106,7 +107,7 @@ if ($hitung) {
 
 <!-- Breadcrumb -->
 <div style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">
-    Peramalan / <strong style="color:var(--text-main);">Peramalan Stok (DES)</strong>
+    Peramalan / <strong style="color:var(--text-main);">Peramalan Stok Kategori (DES)</strong>
 </div>
 
 <!-- Main Card Split Layout -->
@@ -115,16 +116,16 @@ if ($hitung) {
     <!-- Left: Form -->
     <div>
         <form method="GET" style="display:flex; flex-direction:column; gap:16px;">
-            <input type="hidden" name="page" value="des">
+            <input type="hidden" name="page" value="des_kategori">
             
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
-                <label class="form-label" style="margin:0;">Pilih Barang</label>
-                <select name="kode_barang" class="form-control" required style="background:var(--bg-body); border-color:transparent;">
-                    <option value="">Pilih barang</option>
-                    <?php while ($rb = $qB->fetch_assoc()): ?>
-                    <option value="<?= htmlspecialchars($rb['kode_barang']) ?>"
-                        <?= ($rb['kode_barang'] === $kode_barang) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($rb['nama_produk']) ?> (<?= htmlspecialchars($rb['kode_barang']) ?>)
+                <label class="form-label" style="margin:0;">Pilih Kategori</label>
+                <select name="id_kategori" class="form-control" required style="background:var(--bg-body); border-color:transparent;">
+                    <option value="">Pilih kategori</option>
+                    <?php while ($rk = $qK->fetch_assoc()): ?>
+                    <option value="<?= htmlspecialchars($rk['id_kategori']) ?>"
+                        <?= ($rk['id_kategori'] == $id_kategori) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($rk['nama_kategori']) ?>
                     </option>
                     <?php endwhile; ?>
                 </select>
@@ -178,7 +179,7 @@ if ($hitung) {
             </button>
         <?php else: ?>
             <div style="color:var(--text-muted); font-size:13px; display:flex; height:100%; align-items:center; opacity:0.6;">
-                Pilih barang dan klik Proses Peramalan untuk melihat hasil.
+                Pilih kategori dan klik Proses Peramalan untuk melihat hasil.
             </div>
         <?php endif; ?>
     </div>
