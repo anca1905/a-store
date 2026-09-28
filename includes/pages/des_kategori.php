@@ -38,7 +38,8 @@ if ($hitung) {
                 FROM tbl_detail_penjualan d
                 JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
                 JOIN tbl_barang b ON d.kode_barang = b.kode_barang
-                WHERE b.id_kategori = $id_kategori
+                JOIN tbl_kategori k ON b.kategori = k.nama_kategori
+                WHERE k.id_kategori = $id_kategori
                 GROUP BY periode_grup
                 ORDER BY periode_grup DESC
                 LIMIT $n_periode";
@@ -51,7 +52,8 @@ if ($hitung) {
                 FROM tbl_detail_penjualan d
                 JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
                 JOIN tbl_barang b ON d.kode_barang = b.kode_barang
-                WHERE b.id_kategori = $id_kategori
+                JOIN tbl_kategori k ON b.kategori = k.nama_kategori
+                WHERE k.id_kategori = $id_kategori
                 GROUP BY periode_grup
                 ORDER BY periode_grup DESC
                 LIMIT $n_periode";
