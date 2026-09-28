@@ -21,8 +21,8 @@ $id_penjualan = 400;
 for ($day = 0; $day <= $days; $day++) {
     $current_date = strtotime("+$day days", $start_date);
     
-    // 1 to 4 trxs per day
-    $num_trx = rand(1, 4);
+    // Kurangi jumlah transaksi: 1 sampai 2 transaksi per hari (bahkan kadang 0)
+    $num_trx = rand(0, 2);
     for ($t = 0; $t < $num_trx; $t++) {
         $hour = rand(9, 20);
         $minute = rand(0, 59);
@@ -30,7 +30,8 @@ for ($day = 0; $day <= $days; $day++) {
         
         $no_faktur = "INV-" . date("Ym", $current_date) . "-" . rand(1000, 9999) . $t . $day;
         
-        $num_items = rand(1, 3);
+        // Cuma 1 atau 2 macam barang per transaksi
+        $num_items = rand(1, 2);
         shuffle($products);
         $chosen = array_slice($products, 0, $num_items);
         
@@ -41,10 +42,13 @@ for ($day = 0; $day <= $days; $day++) {
         foreach ($chosen as $item) {
             $kode = $item[0];
             $harga = $item[1];
-            $qty = rand(1, 3);
+            // Qty sangat kecil, cuma 1 atau 2 pcs
+            $qty = rand(1, 2);
             
-            // Buat pola tren naik tipis supaya forecasting keliatan real
-            $qty += round($day / 30); // Tiap 30 hari nambah sedikit qty
+            // Tambahkan 1 qty ekstra sebulan sekali agar ada variasi pelan
+            if (rand(1, 30) == 1) {
+                $qty += 1;
+            }
             
             $subtotal = $harga * $qty;
             
