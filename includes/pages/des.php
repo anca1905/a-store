@@ -1,11 +1,13 @@
 <?php
 // Halaman: Peramalan Stok — Double Exponential Smoothing (DES)
 $kode_barang = $conn->real_escape_string($_GET['kode_barang'] ?? '');
-$tipe_waktu  = $_GET['tipe_waktu'] ?? 'mingguan';
-$n_periode   = max(4, (int)($_GET['n_periode'] ?? 8));   // jumlah minggu/hari data historis
-$alpha       = isset($_GET['alpha']) ? floatval($_GET['alpha']) : 0.3;
-$alpha       = max(0.01, min(0.99, $alpha)); // clamp 0.01–0.99
-$hitung      = isset($_GET['kode_barang']) && $kode_barang !== '';
+$target_peramalan = $_GET['target_peramalan'] ?? 'mingguan';
+// Set default n_periode: 7 hari untuk mingguan, 4 minggu untuk bulanan
+$default_n = ($target_peramalan === 'mingguan') ? 7 : 4;
+$n_periode = max(3, (int)($_GET['n_periode'] ?? $default_n));
+$alpha     = isset($_GET['alpha']) ? floatval($_GET['alpha']) : 0.3;
+$alpha     = max(0.01, min(0.99, $alpha));
+$hitung    = isset($_GET['kode_barang']) && $kode_barang !== '';
 
 // Ambil daftar barang
 $qB = get_query($conn, "SELECT kode_barang, nama_produk FROM tbl_barang ORDER BY nama_produk");
@@ -13,22 +15,22 @@ $qB = get_query($conn, "SELECT kode_barang, nama_produk FROM tbl_barang ORDER BY
 // Logika Peramalan DES (Brown's Double Exponential Smoothing)
 $rows = [];
 $aktual = [];
-$S1 = []; // S' (Single Smoothing)
-$S2 = []; // S" (Double Smoothing)
-$a  = []; // Konstanta a (Level)
-$b  = []; // Trend b
-$F  = []; // Forecast F
+$S1 = []; // S'
+$S2 = []; // S"
+$a  = []; // Level
+$b  = []; // Trend
+$F  = []; // Forecast
 $n = 0;
 $hasilPeramalan = 0;
 $akurasi = 0;
 $kualitas = '';
 
-// Variabel tambahan untuk peramalan harian (7 hari ke depan)
-$forecast_harian = [];
+// Variabel tambahan untuk breakdown peramalan
+$forecast_breakdown = [];
 
 if ($hitung) {
-    if ($tipe_waktu === 'mingguan') {
-        // Fetch WEEKLY sales historical data
+    if ($target_peramalan === 'bulanan') {
+        // PERAMALAN BULANAN (History Mingguan)
         $sql = "SELECT 
                     YEARWEEK(p.tanggal_waktu, 1) as periode_grup,
                     MIN(DATE(p.tanggal_waktu)) as tgl_awal,
@@ -40,7 +42,7 @@ if ($hitung) {
                 ORDER BY periode_grup DESC
                 LIMIT $n_periode";
     } else {
-        // Fetch DAILY sales historical data
+        // PERAMALAN MINGGUAN (History Harian)
         $sql = "SELECT 
                     DATE(p.tanggal_waktu) as periode_grup,
                     DATE(p.tanggal_waktu) as tgl_awal,
@@ -66,7 +68,7 @@ if ($hitung) {
     if ($n_existing < $n_periode) {
         $needed = $n_periode - $n_existing;
         $mock_data = [];
-        $time_unit = ($tipe_waktu === 'mingguan') ? 'week' : 'day';
+        $time_unit = ($target_peramalan === 'bulanan') ? 'week' : 'day';
         for ($i = $needed; $i >= 1; $i--) {
             $tgl = date('d M Y', strtotime("-$i $time_unit", strtotime($n_existing > 0 ? $raw_data[0]['tgl_awal'] : 'today')));
             $mock_data[] = ['periode_grup' => '', 'tgl_awal' => $tgl, 'total_qty' => rand(0, 5)];
@@ -109,19 +111,19 @@ if ($hitung) {
     
     // Prediksi untuk masa depan
     $hasilPeramalan = 0;
-    if ($tipe_waktu === 'mingguan') {
-        // Prediksi 1 minggu ke depan (m = 1)
-        $hasilPeramalan = max(0, $a[$n-1] + $b[$n-1] * 1);
-    } else {
-        // Prediksi 7 hari ke depan (m = 1 sampai 7)
-        for ($m = 1; $m <= 7; $m++) {
-            $prediksi_hari = max(0, $a[$n-1] + ($m * $b[$n-1]));
-            $forecast_harian[] = [
-                'hari_ke' => $m,
-                'prediksi' => round($prediksi_hari)
-            ];
-            $hasilPeramalan += $prediksi_hari;
-        }
+    
+    // Jika Mingguan (History Harian), prediksi m=1 s/d m=7 (7 hari ke depan)
+    // Jika Bulanan (History Mingguan), prediksi m=1 s/d m=4 (4 minggu ke depan)
+    $jangka_waktu = ($target_peramalan === 'mingguan') ? 7 : 4;
+    $label_waktu  = ($target_peramalan === 'mingguan') ? 'Hari' : 'Minggu';
+
+    for ($m = 1; $m <= $jangka_waktu; $m++) {
+        $prediksi = max(0, $a[$n-1] + ($m * $b[$n-1]));
+        $forecast_breakdown[] = [
+            'label' => $label_waktu . ' ' . $m,
+            'prediksi' => round($prediksi)
+        ];
+        $hasilPeramalan += $prediksi;
     }
     $hasilPeramalan = round($hasilPeramalan);
     
@@ -152,10 +154,10 @@ if ($hitung) {
             <input type="hidden" name="page" value="des">
             
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
-                <label class="form-label" style="margin:0;">Tipe Data Historis</label>
-                <select name="tipe_waktu" class="form-control" onchange="this.form.submit()" style="background:var(--bg-body); border-color:transparent;">
-                    <option value="mingguan" <?= $tipe_waktu === 'mingguan' ? 'selected' : '' ?>>Rekap per Minggu</option>
-                    <option value="harian" <?= $tipe_waktu === 'harian' ? 'selected' : '' ?>>Rekap per Hari</option>
+                <label class="form-label" style="margin:0;">Target Peramalan</label>
+                <select name="target_peramalan" class="form-control" onchange="this.form.submit()" style="background:var(--bg-body); border-color:transparent;">
+                    <option value="mingguan" <?= $target_peramalan === 'mingguan' ? 'selected' : '' ?>>1 Minggu Kedepan (Data Harian)</option>
+                    <option value="bulanan" <?= $target_peramalan === 'bulanan' ? 'selected' : '' ?>>1 Bulan Kedepan (Data Mingguan)</option>
                 </select>
             </div>
 
@@ -173,8 +175,8 @@ if ($hitung) {
             </div>
 
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
-                <label class="form-label" style="margin:0;">Periode Data (<?= $tipe_waktu === 'mingguan' ? 'Minggu' : 'Hari' ?>)</label>
-                <input type="number" name="n_periode" class="form-control" value="<?= $n_periode ?>" min="4" max="52" style="background:var(--bg-body); border-color:transparent;">
+                <label class="form-label" style="margin:0;">Periode Data (<?= $target_peramalan === 'mingguan' ? 'Hari' : 'Minggu' ?>)</label>
+                <input type="number" name="n_periode" class="form-control" value="<?= $n_periode ?>" min="3" max="365" style="background:var(--bg-body); border-color:transparent;">
             </div>
 
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
@@ -183,8 +185,8 @@ if ($hitung) {
             </div>
             
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
-                <label class="form-label" style="margin:0;">Periode Ramalan</label>
-                <input type="text" class="form-control" value="Minggu Depan" disabled style="background:var(--bg-body); border-color:transparent;">
+                <label class="form-label" style="margin:0;">Periode Output</label>
+                <input type="text" class="form-control" value="<?= $target_peramalan === 'mingguan' ? 'Minggu Depan' : 'Bulan Depan' ?>" disabled style="background:var(--bg-body); border-color:transparent;">
             </div>
 
             <div style="display:flex; justify-content:flex-end; margin-top:16px;">
@@ -201,28 +203,28 @@ if ($hitung) {
         
         <?php if ($hitung && isset($hasilPeramalan)): ?>
             <div style="margin-bottom:16px;">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Periode Ramalan</div>
-                <div style="font-size:14px; font-weight:600;">Minggu Depan</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Target Waktu</div>
+                <div style="font-size:14px; font-weight:600;"><?= $target_peramalan === 'mingguan' ? 'Minggu Depan' : 'Bulan Depan' ?></div>
             </div>
             
             <div style="margin-bottom:16px;">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Prediksi Penjualan</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Prediksi Total Penjualan</div>
                 <div style="font-size:14px; font-weight:600;"><?= number_format($hasilPeramalan, 0, ',', '.') ?> Unit</div>
             </div>
             
             <div style="margin-bottom:24px;">
                 <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Interpretasi</div>
-                <div style="font-size:13px; line-height:1.5;">Diperkirakan penjualan (kebutuhan stok) pada minggu depan sebanyak <strong><?= number_format($hasilPeramalan, 0, ',', '.') ?> unit</strong>. Akurasi model <?= max(0, $akurasi) ?>% (<?= $kualitas ?>).</div>
+                <div style="font-size:13px; line-height:1.5;">Diperkirakan total penjualan (kebutuhan stok) pada <?= $target_peramalan === 'mingguan' ? 'minggu' : 'bulan' ?> depan sebanyak <strong><?= number_format($hasilPeramalan, 0, ',', '.') ?> unit</strong>. Akurasi model <?= max(0, $akurasi) ?>% (<?= $kualitas ?>).</div>
             </div>
 
-            <?php if ($tipe_waktu === 'harian' && !empty($forecast_harian)): ?>
-            <!-- Breakdown 7 Hari ke Depan -->
+            <?php if (!empty($forecast_breakdown)): ?>
+            <!-- Breakdown Prediksi -->
             <div style="margin-bottom:24px; background:var(--bg-body); padding:16px; border-radius:8px;">
-                <div style="font-size:12px; font-weight:700; margin-bottom:12px;">Rincian Prediksi 7 Hari Kedepan:</div>
-                <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; text-align:center;">
-                    <?php foreach ($forecast_harian as $fh): ?>
+                <div style="font-size:12px; font-weight:700; margin-bottom:12px;">Rincian Prediksi <?= $target_peramalan === 'mingguan' ? '7 Hari' : '4 Minggu' ?> Kedepan:</div>
+                <div style="display:grid; grid-template-columns:repeat(<?= $target_peramalan === 'mingguan' ? 7 : 4 ?>, 1fr); gap:8px; text-align:center;">
+                    <?php foreach ($forecast_breakdown as $fh): ?>
                     <div style="background:#fff; border:1px solid var(--border-color); padding:8px 4px; border-radius:6px;">
-                        <div style="font-size:10px; color:var(--text-muted);">Hari <?= $fh['hari_ke'] ?></div>
+                        <div style="font-size:10px; color:var(--text-muted);"><?= $fh['label'] ?></div>
                         <div style="font-size:13px; font-weight:700; color:var(--primary-color); margin-top:4px;"><?= $fh['prediksi'] ?></div>
                     </div>
                     <?php endforeach; ?>
@@ -231,7 +233,7 @@ if ($hitung) {
             <?php endif; ?>
 
             <button onclick="document.getElementById('detailPerhitungan').style.display = 'block'" class="btn btn-outline" style="width:100%; justify-content:center; font-size:13px;">
-                Lihat Detail Historis <?= $tipe_waktu === 'mingguan' ? 'Mingguan' : 'Harian' ?>
+                Lihat Detail Historis Data (<?= $target_peramalan === 'mingguan' ? 'Harian' : 'Mingguan' ?>)
             </button>
         <?php else: ?>
             <div style="color:var(--text-muted); font-size:13px; display:flex; height:100%; align-items:center; opacity:0.6;">
@@ -244,14 +246,14 @@ if ($hitung) {
 <!-- ── TABEL DATA PERAMALAN (Hidden by default) ───────────────────────── -->
 <div id="detailPerhitungan" style="display:none; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
     <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="font-size:15px; font-weight:700;">Data Historis <?= $tipe_waktu === 'mingguan' ? 'Mingguan' : 'Harian' ?> — DES (α = <?= $alpha ?>)</h3>
+        <h3 style="font-size:15px; font-weight:700;">Data Historis <?= $target_peramalan === 'mingguan' ? 'Harian' : 'Mingguan' ?> — DES (α = <?= $alpha ?>)</h3>
         <button onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn"><i class="fa-solid fa-times"></i></button>
     </div>
     <div class="table-responsive">
         <table class="data-table" style="text-align:center;">
             <thead>
                 <tr>
-                    <th><?= $tipe_waktu === 'mingguan' ? 'Minggu' : 'Hari' ?> Ke-</th>
+                    <th><?= $target_peramalan === 'mingguan' ? 'Hari' : 'Minggu' ?> Ke-</th>
                     <th>Tanggal Awal</th>
                     <th>Aktual (X_t)</th>
                     <th>S'_t</th>
@@ -283,10 +285,10 @@ if ($hitung) {
                     <td><?= $mape_disp ?></td>
                 </tr>
                 <?php endfor; ?>
-                <!-- Baris peramalan minggu depan -->
+                <!-- Baris peramalan masa depan -->
                 <tr style="background:var(--primary-light); font-weight:700;">
                     <td><?= $n + 1 ?></td>
-                    <td>Minggu Depan</td>
+                    <td><?= $target_peramalan === 'mingguan' ? 'Minggu Depan' : 'Bulan Depan' ?></td>
                     <td>—</td>
                     <td>—</td>
                     <td>—</td>
