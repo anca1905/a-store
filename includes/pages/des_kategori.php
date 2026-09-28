@@ -1,7 +1,8 @@
 <?php
 // Halaman: Peramalan Stok — Double Exponential Smoothing (DES) Kategori
 $id_kategori = isset($_GET['id_kategori']) ? (int)$_GET['id_kategori'] : 0;
-$n_periode   = max(4, (int)($_GET['n_periode'] ?? 8));   // jumlah minggu data historis
+$tipe_waktu  = $_GET['tipe_waktu'] ?? 'mingguan';
+$n_periode   = max(4, (int)($_GET['n_periode'] ?? 8));   // jumlah minggu/hari data historis
 $alpha       = isset($_GET['alpha']) ? floatval($_GET['alpha']) : 0.3;
 $alpha       = max(0.01, min(0.99, $alpha)); // clamp 0.01–0.99
 $hitung      = isset($_GET['id_kategori']) && $id_kategori > 0;
@@ -22,19 +23,38 @@ $hasilPeramalan = 0;
 $akurasi = 0;
 $kualitas = '';
 
+// Variabel tambahan untuk peramalan harian (7 hari ke depan)
+$forecast_harian = [];
+
 if ($hitung) {
-    // Fetch WEEKLY sales historical data
-    $sql = "SELECT 
-                YEARWEEK(p.tanggal_waktu, 1) as minggu,
-                MIN(DATE(p.tanggal_waktu)) as tgl_awal,
-                SUM(d.qty) as total_qty
-            FROM tbl_detail_penjualan d
-            JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
-            JOIN tbl_barang b ON d.kode_barang = b.kode_barang
-            WHERE b.id_kategori = $id_kategori
-            GROUP BY minggu
-            ORDER BY minggu DESC
-            LIMIT $n_periode";
+    if ($tipe_waktu === 'mingguan') {
+        // Fetch WEEKLY sales historical data
+        $sql = "SELECT 
+                    YEARWEEK(p.tanggal_waktu, 1) as periode_grup,
+                    MIN(DATE(p.tanggal_waktu)) as tgl_awal,
+                    SUM(d.qty) as total_qty
+                FROM tbl_detail_penjualan d
+                JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+                JOIN tbl_barang b ON d.kode_barang = b.kode_barang
+                WHERE b.id_kategori = $id_kategori
+                GROUP BY periode_grup
+                ORDER BY periode_grup DESC
+                LIMIT $n_periode";
+    } else {
+        // Fetch DAILY sales historical data
+        $sql = "SELECT 
+                    DATE(p.tanggal_waktu) as periode_grup,
+                    DATE(p.tanggal_waktu) as tgl_awal,
+                    SUM(d.qty) as total_qty
+                FROM tbl_detail_penjualan d
+                JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+                JOIN tbl_barang b ON d.kode_barang = b.kode_barang
+                WHERE b.id_kategori = $id_kategori
+                GROUP BY periode_grup
+                ORDER BY periode_grup DESC
+                LIMIT $n_periode";
+    }
+
     $qD = get_query($conn, $sql);
     $raw_data = [];
     while ($r = $qD->fetch_assoc()) {
@@ -43,14 +63,15 @@ if ($hitung) {
     }
     $raw_data = array_reverse($raw_data);
     
-    // Fill up data if fewer than n_periode weeks exist
+    // Fill up data if fewer than n_periode exists
     $n_existing = count($raw_data);
     if ($n_existing < $n_periode) {
         $needed = $n_periode - $n_existing;
         $mock_data = [];
+        $time_unit = ($tipe_waktu === 'mingguan') ? 'week' : 'day';
         for ($i = $needed; $i >= 1; $i--) {
-            $tgl = date('d M Y', strtotime("-$i week", strtotime($n_existing > 0 ? $raw_data[0]['tgl_awal'] : 'today')));
-            $mock_data[] = ['minggu' => '', 'tgl_awal' => $tgl, 'total_qty' => rand(0, 5)];
+            $tgl = date('d M Y', strtotime("-$i $time_unit", strtotime($n_existing > 0 ? $raw_data[0]['tgl_awal'] : 'today')));
+            $mock_data[] = ['periode_grup' => '', 'tgl_awal' => $tgl, 'total_qty' => rand(0, 5)];
         }
         $raw_data = array_merge($mock_data, $raw_data);
     }
@@ -88,8 +109,22 @@ if ($hitung) {
         }
     }
     
-    // Prediksi untuk minggu depan (m = 1)
-    $hasilPeramalan = max(0, $a[$n-1] + $b[$n-1] * 1);
+    // Prediksi untuk masa depan
+    $hasilPeramalan = 0;
+    if ($tipe_waktu === 'mingguan') {
+        // Prediksi 1 minggu ke depan (m = 1)
+        $hasilPeramalan = max(0, $a[$n-1] + $b[$n-1] * 1);
+    } else {
+        // Prediksi 7 hari ke depan (m = 1 sampai 7)
+        for ($m = 1; $m <= 7; $m++) {
+            $prediksi_hari = max(0, $a[$n-1] + ($m * $b[$n-1]));
+            $forecast_harian[] = [
+                'hari_ke' => $m,
+                'prediksi' => round($prediksi_hari)
+            ];
+            $hasilPeramalan += $prediksi_hari;
+        }
+    }
     $hasilPeramalan = round($hasilPeramalan);
     
     $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
@@ -119,6 +154,14 @@ if ($hitung) {
             <input type="hidden" name="page" value="des_kategori">
             
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
+                <label class="form-label" style="margin:0;">Tipe Data Historis</label>
+                <select name="tipe_waktu" class="form-control" onchange="this.form.submit()" style="background:var(--bg-body); border-color:transparent;">
+                    <option value="mingguan" <?= $tipe_waktu === 'mingguan' ? 'selected' : '' ?>>Rekap per Minggu</option>
+                    <option value="harian" <?= $tipe_waktu === 'harian' ? 'selected' : '' ?>>Rekap per Hari</option>
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
                 <label class="form-label" style="margin:0;">Pilih Kategori</label>
                 <select name="id_kategori" class="form-control" required style="background:var(--bg-body); border-color:transparent;">
                     <option value="">Pilih kategori</option>
@@ -132,7 +175,7 @@ if ($hitung) {
             </div>
 
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
-                <label class="form-label" style="margin:0;">Periode Data (Minggu)</label>
+                <label class="form-label" style="margin:0;">Periode Data (<?= $tipe_waktu === 'mingguan' ? 'Minggu' : 'Hari' ?>)</label>
                 <input type="number" name="n_periode" class="form-control" value="<?= $n_periode ?>" min="4" max="52" style="background:var(--bg-body); border-color:transparent;">
             </div>
 
@@ -174,8 +217,23 @@ if ($hitung) {
                 <div style="font-size:13px; line-height:1.5;">Diperkirakan penjualan (kebutuhan stok) pada minggu depan sebanyak <strong><?= number_format($hasilPeramalan, 0, ',', '.') ?> unit</strong>. Akurasi model <?= max(0, $akurasi) ?>% (<?= $kualitas ?>).</div>
             </div>
 
+            <?php if ($tipe_waktu === 'harian' && !empty($forecast_harian)): ?>
+            <!-- Breakdown 7 Hari ke Depan -->
+            <div style="margin-bottom:24px; background:var(--bg-body); padding:16px; border-radius:8px;">
+                <div style="font-size:12px; font-weight:700; margin-bottom:12px;">Rincian Prediksi 7 Hari Kedepan:</div>
+                <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; text-align:center;">
+                    <?php foreach ($forecast_harian as $fh): ?>
+                    <div style="background:#fff; border:1px solid var(--border-color); padding:8px 4px; border-radius:6px;">
+                        <div style="font-size:10px; color:var(--text-muted);">Hari <?= $fh['hari_ke'] ?></div>
+                        <div style="font-size:13px; font-weight:700; color:var(--primary-color); margin-top:4px;"><?= $fh['prediksi'] ?></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <button onclick="document.getElementById('detailPerhitungan').style.display = 'block'" class="btn btn-outline" style="width:100%; justify-content:center; font-size:13px;">
-                Lihat Detail Historis Mingguan
+                Lihat Detail Historis <?= $tipe_waktu === 'mingguan' ? 'Mingguan' : 'Harian' ?>
             </button>
         <?php else: ?>
             <div style="color:var(--text-muted); font-size:13px; display:flex; height:100%; align-items:center; opacity:0.6;">
@@ -188,14 +246,14 @@ if ($hitung) {
 <!-- ── TABEL DATA PERAMALAN (Hidden by default) ───────────────────────── -->
 <div id="detailPerhitungan" style="display:none; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
     <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="font-size:15px; font-weight:700;">Data Historis Mingguan — DES (α = <?= $alpha ?>)</h3>
+        <h3 style="font-size:15px; font-weight:700;">Data Historis <?= $tipe_waktu === 'mingguan' ? 'Mingguan' : 'Harian' ?> — DES (α = <?= $alpha ?>)</h3>
         <button onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn"><i class="fa-solid fa-times"></i></button>
     </div>
     <div class="table-responsive">
         <table class="data-table" style="text-align:center;">
             <thead>
                 <tr>
-                    <th>Minggu Ke-</th>
+                    <th><?= $tipe_waktu === 'mingguan' ? 'Minggu' : 'Hari' ?> Ke-</th>
                     <th>Tanggal Awal</th>
                     <th>Aktual (X_t)</th>
                     <th>S'_t</th>
