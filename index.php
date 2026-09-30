@@ -17,6 +17,21 @@ if ($checkMetode && $checkMetode->num_rows == 0) {
     $conn->query("ALTER TABLE tbl_penjualan ADD COLUMN metode_pembayaran VARCHAR(50) DEFAULT 'Cash'");
 }
 
+// Auto-migrate foto_profil di tbl_users
+$checkFotoProfil = $conn->query("SHOW COLUMNS FROM tbl_users LIKE 'foto_profil'");
+if ($checkFotoProfil && $checkFotoProfil->num_rows == 0) {
+    $conn->query("ALTER TABLE tbl_users ADD COLUMN foto_profil VARCHAR(255) DEFAULT NULL AFTER nama_lengkap");
+}
+
+// Sinkronisasi foto_profil ke session (agar topbar selalu terkini)
+if (isset($_SESSION['user_id']) && !isset($_SESSION['foto_profil'])) {
+    $uid_sync = (int)$_SESSION['user_id'];
+    $qSync = $conn->query("SELECT foto_profil FROM tbl_users WHERE id_user=$uid_sync");
+    if ($qSync && $row_sync = $qSync->fetch_assoc()) {
+        $_SESSION['foto_profil'] = $row_sync['foto_profil'];
+    }
+}
+
 // Auto-fix filenames
 $dirImg = __DIR__ . '/assets/img/barang/';
 $qImg = $conn->query("SELECT id_barang, foto_barang FROM tbl_barang WHERE foto_barang IS NOT NULL");

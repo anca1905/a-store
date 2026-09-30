@@ -23,11 +23,17 @@
 
         <div class="user-profile">
             <?php
-            $namaUser = isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Admin Store';
-            $roleUser = isset($_SESSION['role']) ? $_SESSION['role'] : 'Administrator BI';
-            $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($namaUser) . "&background=0284C7&color=fff&rounded=true";
+            $namaUser  = isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Admin Store';
+            $roleUser  = isset($_SESSION['role'])         ? $_SESSION['role']          : 'Administrator BI';
+            $fotoProfil = $_SESSION['foto_profil'] ?? null;
+            $avatarDoc  = __DIR__ . '/../assets/img/profil/' . $fotoProfil;
+            if ($fotoProfil && file_exists($avatarDoc)) {
+                $avatarUrl = 'assets/img/profil/' . htmlspecialchars($fotoProfil);
+            } else {
+                $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($namaUser) . "&background=0284C7&color=fff&rounded=true";
+            }
             ?>
-            <img src="<?= $avatarUrl ?>" alt="Profile" class="avatar">
+            <img src="<?= $avatarUrl ?>" alt="Profile" class="avatar" style="object-fit:cover;">
             <div class="user-info">
                 <span class="user-name"><?= htmlspecialchars($namaUser) ?></span>
                 <span class="user-role"><?= htmlspecialchars($roleUser) ?></span>

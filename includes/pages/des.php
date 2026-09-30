@@ -1,4 +1,21 @@
 <?php
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'simpan_riwayat') {
+    $kb = $conn->real_escape_string($_POST['kode_barang']);
+    $nama = $conn->real_escape_string($_POST['nama_barang']);
+    $periode = $conn->real_escape_string($_POST['n_periode']);
+    $alpha_val = (float)$_POST['alpha'];
+    $hasil = (int)$_POST['hasil'];
+    $akurasi_val = (float)$_POST['akurasi'];
+    $target = $_POST['target_waktu'];
+    
+    $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi) 
+               VALUES (NOW(), 'barang', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val)";
+    get_query($conn, $sqlIns);
+    
+    $msgRiwayat = "Riwayat peramalan berhasil disimpan!";
+}
+?>
+<?php
 // Halaman: Peramalan Stok — Double Exponential Smoothing (DES)
 $kode_barang = $conn->real_escape_string($_GET['kode_barang'] ?? '');
 $target_peramalan = $_GET['target_peramalan'] ?? 'mingguan';
@@ -140,12 +157,22 @@ if ($hitung) {
 }
 ?>
 
+<style>
+@media print {
+    body * { visibility: hidden; }
+    #peramalan-print-area, #peramalan-print-area * { visibility: visible; }
+    #peramalan-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    .btn, form, select, input, .close-btn { display: none !important; }
+}
+</style>
+
 <!-- Breadcrumb -->
 <div style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">
     Peramalan / <strong style="color:var(--text-main);">Peramalan Stok (DES)</strong>
 </div>
 
 <!-- Main Card Split Layout -->
+<div id="peramalan-print-area">
 <div style="background:#fff; border-radius:16px; border:1px solid var(--border-color); padding:32px; display:grid; grid-template-columns: 1fr 300px; gap:40px; margin-bottom:24px;">
     
     <!-- Left: Form -->
@@ -235,9 +262,35 @@ if ($hitung) {
             </div>
             <?php endif; ?>
 
-            <button onclick="document.getElementById('detailPerhitungan').style.display = 'block'" class="btn btn-outline" style="width:100%; justify-content:center; font-size:13px;">
+            <button onclick="document.getElementById('detailPerhitungan').style.display = 'block'" class="btn btn-outline" style="width:100%; justify-content:center; font-size:13px; margin-bottom:12px;">
                 Lihat Detail Historis Data (<?= $target_peramalan === 'mingguan' ? 'Harian' : 'Mingguan' ?>)
             </button>
+            
+            <div style="display:flex; gap:12px;">
+                <form method="POST" action="" style="flex:1;">
+                    <input type="hidden" name="action" value="simpan_riwayat">
+                    <input type="hidden" name="kode_barang" value="<?= $kode_barang ?>">
+                    <input type="hidden" name="nama_barang" value="<?= htmlspecialchars($b['nama_produk']) ?>">
+                    <input type="hidden" name="n_periode" value="<?= $n_periode ?>">
+                    <input type="hidden" name="alpha" value="<?= $alpha ?>">
+                    <input type="hidden" name="hasil" value="<?= $hasilPeramalan ?>">
+                    <input type="hidden" name="akurasi" value="<?= max(0, $akurasi) ?>">
+                    <input type="hidden" name="target_waktu" value="<?= $target_peramalan === 'mingguan' ? 'Minggu Depan' : 'Bulan Depan' ?>">
+                    <button type="submit" class="btn btn-primary" style="background:#22c55e; width:100%; justify-content:center; font-size:13px;">
+                        <i class="fa-solid fa-save"></i> Simpan Riwayat
+                    </button>
+                </form>
+                <button onclick="window.print()" class="btn btn-primary" style="background:#3b82f6; flex:1; justify-content:center; font-size:13px;">
+                    <i class="fa-solid fa-print"></i> Cetak Peramalan
+                </button>
+            </div>
+            
+            <?php if(isset($msgRiwayat)): ?>
+                <div style="margin-top:12px; padding:10px; background:#dcfce7; color:#166534; border-radius:6px; font-size:13px; text-align:center;">
+                    <?= $msgRiwayat ?>
+                </div>
+            <?php endif; ?>
+
         <?php else: ?>
             <div style="color:var(--text-muted); font-size:13px; display:flex; height:100%; align-items:center; opacity:0.6;">
                 Pilih barang dan klik Proses Peramalan untuk melihat hasil.
@@ -300,6 +353,52 @@ if ($hitung) {
                     <td style="color:var(--primary-color); font-size:15px;"><?= $hasilPeramalan ?></td>
                     <td>—</td>
                 </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div> <!-- Close peramalan-print-area -->
+
+<!-- RIWAYAT PERAMALAN -->
+<div style="background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; margin-bottom:24px;">
+    <div style="padding:20px; border-bottom:1px solid var(--border-color);">
+        <h3 style="font-size:15px; font-weight:700;">Riwayat Peramalan Barang</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Waktu Hitung</th>
+                    <th>Kode Barang</th>
+                    <th>Nama Barang</th>
+                    <th>Target Waktu</th>
+                    <th>Periode</th>
+                    <th>Alpha</th>
+                    <th>Hasil Peramalan</th>
+                    <th>Akurasi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $qHist = get_query($conn, "SELECT * FROM tbl_riwayat_peramalan WHERE tipe='barang' ORDER BY id_riwayat DESC LIMIT 20");
+                if($qHist->num_rows > 0):
+                    while($rh = $qHist->fetch_assoc()):
+                ?>
+                <tr>
+                    <td><?= date('d/m/Y H:i', strtotime($rh['tanggal_hitung'])) ?></td>
+                    <td><strong><?= $rh['referensi'] ?></strong></td>
+                    <td><?= $rh['nama_referensi'] ?></td>
+                    <td><?= $rh['target_waktu'] ?></td>
+                    <td><?= $rh['periode'] ?> <?= strpos($rh['target_waktu'], 'Minggu') !== false ? 'Hari' : 'Minggu' ?></td>
+                    <td><?= $rh['alpha'] ?></td>
+                    <td style="color:var(--primary-color); font-weight:bold;"><?= number_format($rh['hasil'],0,',','.') ?> Unit</td>
+                    <td><?= $rh['akurasi'] ?>%</td>
+                </tr>
+                <?php endwhile; else: ?>
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan barang.</td>
+                </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>

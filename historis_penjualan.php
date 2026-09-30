@@ -29,7 +29,7 @@ $pageTitle = "Data Penjualan Historis";
             <main class="dashboard-content">
                 <div class="page-header">
                     <h2>Data Penjualan Historis</h2>
-                    <p>Rekapitulasi total qty produk yang terjual per bulan dari database.</p>
+                    <p>Rekapitulasi total qty produk yang terjual secara detail per hari (tanggal) dari database.</p>
                 </div>
 
                 <div class="chart-card">
@@ -48,6 +48,34 @@ $pageTitle = "Data Penjualan Historis";
                                     }
                                 } else {
                                     echo "<option value='".date('Y')."'>".date('Y')."</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Bulan</label>
+                            <select name="bulan" class="form-control">
+                                <option value="">Semua Bulan</option>
+                                <?php
+                                $bulanFilter = isset($_GET['bulan']) ? $_GET['bulan'] : '';
+                                $namaBulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                                for($i=1; $i<=12; $i++) {
+                                    $sel = ($i == $bulanFilter) ? 'selected' : '';
+                                    echo "<option value='$i' $sel>{$namaBulan[$i]}</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Pilih Kategori (Opsional)</label>
+                            <select name="kategori" class="form-control">
+                                <option value="">-- Semua Kategori --</option>
+                                <?php
+                                $katFilter = isset($_GET['kategori']) ? $_GET['kategori'] : '';
+                                $qKat = get_query($conn, "SELECT nama_kategori FROM tbl_kategori ORDER BY nama_kategori ASC");
+                                while($rKat = $qKat->fetch_assoc()) {
+                                    $sel = ($rKat['nama_kategori'] == $katFilter) ? 'selected' : '';
+                                    echo "<option value='{$rKat['nama_kategori']}' $sel>{$rKat['nama_kategori']}</option>";
                                 }
                                 ?>
                             </select>
@@ -77,35 +105,40 @@ $pageTitle = "Data Penjualan Historis";
                                 <tr>
                                     <th>Kode Barang</th>
                                     <th>Nama Produk</th>
-                                    <th>Bulan</th>
+                                    <th>Tanggal</th>
                                     <th>Total Terjual (Qty)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
                                 $kondisi = "YEAR(p.tanggal_waktu) = '$tahunFilter'";
+                                if(isset($bulanFilter) && $bulanFilter != '') {
+                                    $kondisi .= " AND MONTH(p.tanggal_waktu) = '$bulanFilter'";
+                                }
                                 if($kbFilter != '') {
                                     $kondisi .= " AND d.kode_barang = '$kbFilter'";
                                 }
+                                if(isset($katFilter) && $katFilter != '') {
+                                    $kondisi .= " AND b.kategori = '$katFilter'";
+                                }
 
-                                $sqlHist = "SELECT d.kode_barang, b.nama_produk, MONTH(p.tanggal_waktu) as bln, SUM(d.qty) as total_qty 
+                                $sqlHist = "SELECT d.kode_barang, b.nama_produk, DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty 
                                             FROM tbl_detail_penjualan d 
                                             JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan 
                                             JOIN tbl_barang b ON d.kode_barang = b.kode_barang 
                                             WHERE $kondisi 
-                                            GROUP BY d.kode_barang, MONTH(p.tanggal_waktu) 
-                                            ORDER BY bln ASC";
+                                            GROUP BY d.kode_barang, DATE(p.tanggal_waktu) 
+                                            ORDER BY tgl ASC";
                                 
                                 $qHist = get_query($conn, $sqlHist);
-                                $namaBulan = ['', 'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-
+                                
                                 if($qHist->num_rows > 0):
                                     while($row = $qHist->fetch_assoc()):
                                 ?>
                                 <tr>
                                     <td><strong><?= $row['kode_barang'] ?></strong></td>
                                     <td><?= $row['nama_produk'] ?></td>
-                                    <td><?= $namaBulan[$row['bln']] ?> <?= $tahunFilter ?></td>
+                                    <td><?= date('d/m/Y', strtotime($row['tgl'])) ?></td>
                                     <td><strong style="color:var(--primary-color)"><?= $row['total_qty'] ?> Unit</strong></td>
                                 </tr>
                                 <?php 
