@@ -211,13 +211,13 @@ if ($hitung) {
             </div>
             
             <div style="margin-bottom:16px;">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Prediksi Total Penjualan</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Prediksi Total Stok</div>
                 <div style="font-size:14px; font-weight:600;"><?= number_format($hasilPeramalan, 0, ',', '.') ?> Unit</div>
             </div>
             
             <div style="margin-bottom:24px;">
                 <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Interpretasi</div>
-                <div style="font-size:13px; line-height:1.5;">Diperkirakan total penjualan (kebutuhan stok) pada <?= $target_peramalan === 'mingguan' ? 'minggu' : 'bulan' ?> depan sebanyak <strong><?= number_format($hasilPeramalan, 0, ',', '.') ?> unit</strong>. Akurasi model <?= max(0, $akurasi) ?>% (<?= $kualitas ?>).</div>
+                <div style="font-size:13px; line-height:1.5;">Diperkirakan total stok pada <?= $target_peramalan === 'mingguan' ? 'minggu' : 'bulan' ?> depan sebanyak <strong><?= number_format($hasilPeramalan, 0, ',', '.') ?> unit</strong>. Akurasi model <?= max(0, $akurasi) ?>% (<?= $kualitas ?>).</div>
             </div>
 
             <?php if (!empty($forecast_breakdown)): ?>
