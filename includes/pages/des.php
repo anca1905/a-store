@@ -23,7 +23,7 @@ $target_peramalan = $_GET['target_peramalan'] ?? 'mingguan';
 $default_n = ($target_peramalan === 'mingguan') ? 7 : 4;
 $n_periode = max(3, (int)($_GET['n_periode'] ?? $default_n));
 $alpha     = isset($_GET['alpha']) ? floatval($_GET['alpha']) : 0.1;
-$alpha     = in_array($alpha, [0.1, 0.2]) ? $alpha : 0.1;
+$alpha     = in_array($alpha, [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]) ? $alpha : 0.1;
 $hitung    = isset($_GET['kode_barang']) && $kode_barang !== '';
 
 // Ambil daftar barang
@@ -209,8 +209,9 @@ if ($hitung) {
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
                 <label class="form-label" style="margin:0;">Nilai Alpha (α)<br><small style="color:var(--text-muted); font-size:10px;">Level Smoothing</small></label>
                 <select name="alpha" class="form-control" style="background:var(--bg-body); border-color:transparent;">
-                    <option value="0.1" <?= $alpha == 0.1 ? 'selected' : '' ?>>0.1</option>
-                    <option value="0.2" <?= $alpha == 0.2 ? 'selected' : '' ?>>0.2</option>
+                    <?php for($i = 0.1; $i <= 0.9; $i += 0.1): $val = round($i, 1); ?>
+                        <option value="<?= $val ?>" <?= $alpha == $val ? 'selected' : '' ?>><?= $val ?></option>
+                    <?php endfor; ?>
                 </select>
             </div>
             

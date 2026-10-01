@@ -503,7 +503,15 @@ if (isset($_GET['ajax_detail'])) {
                     <!-- User Profile Dropdown -->
                     <div class="profile-wrapper" style="position:relative;" onclick="toggleProfileDropdown(event)">
                         <div class="user-profile" style="display:flex; align-items:center; gap:12px; padding:4px 8px; cursor:pointer;">
-                            <img src="https://ui-avatars.com/api/?name=<?= urlencode($namaUser) ?>&background=111111&color=fff&rounded=true" alt="Avatar" class="avatar" style="width:36px; height:36px; border-radius:50%;">
+                            <?php
+                            $top_foto = $_SESSION['foto_profil'] ?? null;
+                            if ($top_foto && file_exists(__DIR__ . '/assets/img/profil/' . $top_foto)) {
+                                $top_avatarSrc = 'assets/img/profil/' . htmlspecialchars($top_foto);
+                            } else {
+                                $top_avatarSrc = 'https://ui-avatars.com/api/?name=' . urlencode($namaUser) . '&background=111111&color=fff&rounded=true';
+                            }
+                            ?>
+                            <img src="<?= $top_avatarSrc ?>" alt="Avatar" class="avatar" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
                             <div class="user-info" style="display:flex; flex-direction:column; text-align:left;">
                                 <span class="user-name" style="font-size:13px; font-weight:700; color:var(--text-main); line-height:1.2;"><?= htmlspecialchars($namaUser) ?></span>
                                 <span class="user-role" style="font-size:11px; color:var(--text-muted);"><?= htmlspecialchars($roleUser) ?></span>
