@@ -232,6 +232,14 @@ if (isset($_GET['ajax_detail'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <?php if (in_array($page, ['des', 'des_kategori'])): ?>
+    <style>
+        @page {
+            size: landscape;
+            margin: 10mm;
+        }
+    </style>
+    <?php endif; ?>
     <style>
         /* ── Sidebar nav group label ─────────────────── */
         .nav-group-label {

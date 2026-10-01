@@ -44,8 +44,11 @@ $kualitas = '';
 
 // Variabel tambahan untuk breakdown peramalan
 $forecast_breakdown = [];
+$nk = '';
 
 if ($hitung) {
+    $qNk = $conn->query("SELECT nama_kategori FROM tbl_kategori WHERE id_kategori=$id_kategori"); 
+    $nk = ($qNk && $qNk->num_rows > 0) ? $qNk->fetch_assoc()['nama_kategori'] : '';
     if ($target_peramalan === 'bulanan') {
         // PERAMALAN BULANAN (History Mingguan)
         $sql = "SELECT 
@@ -163,25 +166,142 @@ if ($hitung) {
 
 <style>
 @media print {
-    @page { size: landscape; }
-    body * { visibility: hidden; }
-    #peramalan-print-area, #peramalan-print-area * { visibility: visible; }
-    #peramalan-print-area { position: absolute; left: 0; top: 0; width: 100%; }
-    .btn, form, select, input, .close-btn { display: none !important; }
+    @page {
+        size: landscape;
+        margin: 10mm;
+    }
+
+    /* Sembunyikan elemen antarmuka web */
+    .app-sidebar,
+    .main-header,
+    .sidebar-footer,
+    .breadcrumb-area,
+    .btn,
+    .close-btn,
+    form,
+    select,
+    input,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Reset layout container agar mengisi penuh halaman landscape */
+    html, body {
+        background: #fff !important;
+        color: #000 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .app-container,
+    .main-wrapper,
+    .content-area {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+
+    #peramalan-print-area {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Card Utama saat Cetak */
+    .card-peramalan-main {
+        display: block !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        padding: 20px !important;
+        margin-bottom: 20px !important;
+        box-shadow: none !important;
+    }
+
+    .card-peramalan-right {
+        border-left: none !important;
+        padding-left: 0 !important;
+    }
+
+    /* Tabel Historis WAJIB TAMPIL saat cetak */
+    #detailPerhitungan {
+        display: block !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        margin-bottom: 20px !important;
+        page-break-inside: auto !important;
+    }
+
+    #detailPerhitungan .close-btn {
+        display: none !important;
+    }
+
+    .data-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 11px !important;
+    }
+
+    .data-table th, .data-table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px 8px !important;
+    }
+
+    .data-table th {
+        background-color: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        font-weight: bold !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
 }
 </style>
 
 <!-- Breadcrumb -->
-<div style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">
+<div class="breadcrumb-area" style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">
     Peramalan / <strong style="color:var(--text-main);">Peramalan Stok Kategori (DES)</strong>
 </div>
 
 <!-- Main Card Split Layout -->
 <div id="peramalan-print-area">
-<div style="background:#fff; border-radius:16px; border:1px solid var(--border-color); padding:32px; display:grid; grid-template-columns: 1fr 300px; gap:40px; margin-bottom:24px;">
+
+    <!-- Header & Info Khusus Cetak -->
+    <?php if ($hitung && isset($hasilPeramalan)): ?>
+    <div class="print-only" style="display:none; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+            <div>
+                <h2 style="margin:0; font-size:20px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">A STORE</h2>
+                <div style="font-size:12px; color:#475569; margin-top:2px;">Laporan Hasil Peramalan Stok Kategori — Double Exponential Smoothing (DES)</div>
+            </div>
+            <div style="text-align:right; font-size:11px; color:#475569;">
+                Tanggal Cetak: <strong><?= date('d M Y H:i') ?></strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="print-only" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:12px;">
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+            <div><span style="color:#64748b;">Kategori:</span> <strong style="color:#0f172a;"><?= htmlspecialchars($nk) ?></strong></div>
+            <div><span style="color:#64748b;">Target Peramalan:</span> <strong style="color:#0f172a;"><?= $target_peramalan === 'mingguan' ? '1 Minggu Kedepan (Data Harian)' : '1 Bulan Kedepan (Data Mingguan)' ?></strong></div>
+            <div><span style="color:#64748b;">Periode Data:</span> <strong style="color:#0f172a;"><?= $n_periode ?> <?= $target_peramalan === 'mingguan' ? 'Hari' : 'Minggu' ?></strong></div>
+            <div><span style="color:#64748b;">Nilai Alpha (α):</span> <strong style="color:#0f172a;"><?= $alpha ?></strong></div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+<div class="card-peramalan-main" style="background:#fff; border-radius:16px; border:1px solid var(--border-color); padding:32px; display:grid; grid-template-columns: 1fr 300px; gap:40px; margin-bottom:24px;">
     
     <!-- Left: Form -->
-    <div>
+    <div class="no-print">
         <form method="GET" style="display:flex; flex-direction:column; gap:16px;">
             <input type="hidden" name="page" value="des_kategori">
             
@@ -234,7 +354,7 @@ if ($hitung) {
     </div>
 
     <!-- Right: Hasil Peramalan -->
-    <div style="border-left:1px solid var(--border-color); padding-left:40px;">
+    <div class="card-peramalan-right" style="border-left:1px solid var(--border-color); padding-left:40px;">
         <h3 style="font-size:16px; font-weight:700; margin-bottom:24px;">Hasil Peramalan</h3>
         
         <?php if ($hitung && isset($hasilPeramalan)): ?>
@@ -276,10 +396,6 @@ if ($hitung) {
                 <form method="POST" action="" style="flex:1;">
                     <input type="hidden" name="action" value="simpan_riwayat">
                     <input type="hidden" name="id_kategori" value="<?= $id_kategori ?>">
-                    <?php 
-                    $qNk = $conn->query("SELECT nama_kategori FROM tbl_kategori WHERE id_kategori=$id_kategori"); 
-                    $nk = ($qNk && $qNk->num_rows > 0) ? $qNk->fetch_assoc()['nama_kategori'] : ''; 
-                    ?>
                     <input type="hidden" name="nama_kategori" value="<?= htmlspecialchars($nk) ?>">
                     <input type="hidden" name="n_periode" value="<?= $n_periode ?>">
                     <input type="hidden" name="alpha" value="<?= $alpha ?>">
@@ -290,7 +406,7 @@ if ($hitung) {
                         <i class="fa-solid fa-save"></i> Simpan Riwayat
                     </button>
                 </form>
-                <button onclick="window.print()" class="btn btn-primary" style="background:#3b82f6; flex:1; justify-content:center; font-size:13px;">
+                <button onclick="cetakPeramalan()" class="btn btn-primary" style="background:#3b82f6; flex:1; justify-content:center; font-size:13px;">
                     <i class="fa-solid fa-print"></i> Cetak Peramalan
                 </button>
             </div>
@@ -412,3 +528,15 @@ if ($hitung) {
         </table>
     </div>
 </div>
+
+<script>
+function cetakPeramalan() {
+    var detail = document.getElementById('detailPerhitungan');
+    if (detail) {
+        detail.style.display = 'block';
+    }
+    setTimeout(function() {
+        window.print();
+    }, 100);
+}
+</script>
