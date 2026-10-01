@@ -163,6 +163,7 @@ if ($hitung) {
 
 <style>
 @media print {
+    @page { size: landscape; }
     body * { visibility: hidden; }
     #peramalan-print-area, #peramalan-print-area * { visibility: visible; }
     #peramalan-print-area { position: absolute; left: 0; top: 0; width: 100%; }
