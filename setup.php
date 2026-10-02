@@ -141,6 +141,13 @@ if ($checkSatuan && $checkSatuan->num_rows == 0) {
     echo "<p>&nbsp;&nbsp;&#8627; Kolom <b>satuan</b> sudah ada di tbl_barang, dilewati.</p>";
 }
 
+// --- Pastikan panjang kolom kategori VARCHAR(100) dan Foreign Key ke tbl_kategori ---
+$koneksi->query("ALTER TABLE tbl_barang MODIFY kategori VARCHAR(100) NOT NULL");
+$checkFkKat = $koneksi->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA='$db_name' AND TABLE_NAME='tbl_barang' AND CONSTRAINT_NAME='fk_barang_kategori'");
+if ($checkFkKat && $checkFkKat->num_rows == 0) {
+    @$koneksi->query("ALTER TABLE tbl_barang ADD CONSTRAINT fk_barang_kategori FOREIGN KEY (kategori) REFERENCES tbl_kategori(nama_kategori) ON UPDATE CASCADE ON DELETE RESTRICT");
+}
+
 // =============================================
 // 7. Buat Tabel tbl_penjualan
 // =============================================
@@ -169,10 +176,15 @@ $sqlDetail = "CREATE TABLE IF NOT EXISTS tbl_detail_penjualan (
     harga_satuan INT         NOT NULL,
     qty          INT         NOT NULL,
     subtotal     INT         NOT NULL,
-    FOREIGN KEY (id_penjualan) REFERENCES tbl_penjualan(id_penjualan) ON DELETE CASCADE
+    FOREIGN KEY (id_penjualan) REFERENCES tbl_penjualan(id_penjualan) ON DELETE CASCADE,
+    FOREIGN KEY (kode_barang) REFERENCES tbl_barang(kode_barang) ON UPDATE CASCADE ON DELETE RESTRICT
 )";
 if ($koneksi->query($sqlDetail) === TRUE) {
     echo "<p>&#10004; Tabel <b>tbl_detail_penjualan</b> siap.</p>";
+    $checkFkDet = $koneksi->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA='$db_name' AND TABLE_NAME='tbl_detail_penjualan' AND CONSTRAINT_NAME='fk_detail_barang'");
+    if ($checkFkDet && $checkFkDet->num_rows == 0) {
+        @$koneksi->query("ALTER TABLE tbl_detail_penjualan ADD CONSTRAINT fk_detail_barang FOREIGN KEY (kode_barang) REFERENCES tbl_barang(kode_barang) ON UPDATE CASCADE ON DELETE RESTRICT");
+    }
 } else {
     echo "<p style='color:red;'>Error tbl_detail_penjualan: " . htmlspecialchars($koneksi->error) . "</p>";
 }

@@ -23,6 +23,22 @@ if ($checkFotoProfil && $checkFotoProfil->num_rows == 0) {
     $conn->query("ALTER TABLE tbl_users ADD COLUMN foto_profil VARCHAR(255) DEFAULT NULL AFTER nama_lengkap");
 }
 
+// Auto-migrate foreign keys (Relasi antar tabel untuk phpMyAdmin Designer)
+try {
+    $checkFkBarang = $conn->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tbl_barang' AND CONSTRAINT_NAME='fk_barang_kategori'");
+    if ($checkFkBarang && $checkFkBarang->num_rows == 0) {
+        $conn->query("ALTER TABLE tbl_barang MODIFY kategori VARCHAR(100) NOT NULL");
+        $conn->query("ALTER TABLE tbl_barang ADD CONSTRAINT fk_barang_kategori FOREIGN KEY (kategori) REFERENCES tbl_kategori(nama_kategori) ON UPDATE CASCADE ON DELETE RESTRICT");
+    }
+} catch (Exception $e) {}
+
+try {
+    $checkFkDetail = $conn->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tbl_detail_penjualan' AND CONSTRAINT_NAME='fk_detail_barang'");
+    if ($checkFkDetail && $checkFkDetail->num_rows == 0) {
+        $conn->query("ALTER TABLE tbl_detail_penjualan ADD CONSTRAINT fk_detail_barang FOREIGN KEY (kode_barang) REFERENCES tbl_barang(kode_barang) ON UPDATE CASCADE ON DELETE RESTRICT");
+    }
+} catch (Exception $e) {}
+
 // Sinkronisasi foto_profil ke session (agar topbar selalu terkini)
 if (isset($_SESSION['user_id']) && !isset($_SESSION['foto_profil'])) {
     $uid_sync = (int)$_SESSION['user_id'];

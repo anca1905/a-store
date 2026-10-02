@@ -5,12 +5,14 @@ $conn = new mysqli('localhost', 'root', '', 'db_astore');
 $conn->query("DELETE FROM tbl_detail_penjualan WHERE id_penjualan >= 400");
 $conn->query("DELETE FROM tbl_penjualan WHERE id_penjualan >= 400");
 
-$products = [
-    ['MYBSC01', 130000], ['RNSL01', 150000], ['RNSL02', 130000],
-    ['RNSL03', 130000], ['RNSL04', 130000], ['RNSL05', 130000],
-    ['RNSL06', 150000], ['SLMPNG01', 100000], ['SLMPNG02', 100000],
-    ['HLM01', 130000]
-];
+$products = [];
+$qP = $conn->query("SELECT kode_barang, harga_jual FROM tbl_barang");
+while ($row = $qP->fetch_assoc()) {
+    $products[] = [$row['kode_barang'], (int)$row['harga_jual']];
+}
+if (empty($products)) {
+    die("Tidak ada produk di tbl_barang untuk di-seed.");
+}
 
 $start_date = strtotime("2026-07-01");
 $end_date = strtotime("2026-09-28");

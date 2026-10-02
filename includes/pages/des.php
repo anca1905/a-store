@@ -85,79 +85,72 @@ if ($hitung) {
     }
     $raw_data = array_reverse($raw_data);
     
-    // Fill up data if fewer than n_periode exists
-    $n_existing = count($raw_data);
-    if ($n_existing < $n_periode) {
-        $needed = $n_periode - $n_existing;
-        $mock_data = [];
-        $time_unit = ($target_peramalan === 'bulanan') ? 'week' : 'day';
-        for ($i = $needed; $i >= 1; $i--) {
-            $tgl = date('d M Y', strtotime("-$i $time_unit", strtotime($n_existing > 0 ? $raw_data[0]['tgl_awal'] : 'today')));
-            $mock_data[] = ['periode_grup' => '', 'tgl_awal' => $tgl, 'total_qty' => rand(0, 5)];
-        }
-        $raw_data = array_merge($mock_data, $raw_data);
-    }
-    
     $rows = $raw_data;
     $n = count($rows);
-    $aktual = array_map(function($item) { return (float)$item['total_qty']; }, $rows);
     
-    // Brown's Double Exponential Smoothing
-    $S1[0] = $aktual[0];
-    $S2[0] = $aktual[0];
-    $a[0]  = 2 * $S1[0] - $S2[0];
-    $b[0]  = ($alpha / (1 - $alpha)) * ($S1[0] - $S2[0]);
-    $F[0]  = 0; // Tidak ada forecast untuk periode pertama
-    
-    $sum_mape = 0;
-    $count_mape = 0;
-    
-    for ($i = 1; $i < $n; $i++) {
-        $X_i = $aktual[$i];
+    if ($n >= 3) {
+        $dataCukup = true;
+        $aktual = array_map(function($item) { return (float)$item['total_qty']; }, $rows);
         
-        $S1[$i] = $alpha * $X_i + (1 - $alpha) * $S1[$i-1];
-        $S2[$i] = $alpha * $S1[$i] + (1 - $alpha) * $S2[$i-1];
+        // Brown's Double Exponential Smoothing
+        $S1[0] = $aktual[0];
+        $S2[0] = $aktual[0];
+        $a[0]  = 2 * $S1[0] - $S2[0];
+        $b[0]  = ($alpha / (1 - $alpha)) * ($S1[0] - $S2[0]);
+        $F[0]  = 0; // Tidak ada forecast untuk periode pertama
         
-        $a[$i] = 2 * $S1[$i] - $S2[$i];
-        $b[$i] = ($alpha / (1 - $alpha)) * ($S1[$i] - $S2[$i]);
+        $sum_mape = 0;
+        $count_mape = 0;
         
-        $F[$i] = $a[$i-1] + $b[$i-1] * 1;
-        
-        if ($X_i > 0) {
-            $err = abs($X_i - $F[$i]);
-            $mape = ($err / $X_i) * 100;
-            $sum_mape += $mape;
-            $count_mape++;
+        for ($i = 1; $i < $n; $i++) {
+            $X_i = $aktual[$i];
+            
+            $S1[$i] = $alpha * $X_i + (1 - $alpha) * $S1[$i-1];
+            $S2[$i] = $alpha * $S1[$i] + (1 - $alpha) * $S2[$i-1];
+            
+            $a[$i] = 2 * $S1[$i] - $S2[$i];
+            $b[$i] = ($alpha / (1 - $alpha)) * ($S1[$i] - $S2[$i]);
+            
+            $F[$i] = $a[$i-1] + $b[$i-1] * 1;
+            
+            if ($X_i > 0) {
+                $err = abs($X_i - $F[$i]);
+                $mape = ($err / $X_i) * 100;
+                $sum_mape += $mape;
+                $count_mape++;
+            }
         }
-    }
-    
-    // Prediksi untuk masa depan
-    $hasilPeramalan = 0;
-    
-    // Jika Mingguan (History Harian), prediksi m=1 s/d m=7 (7 hari ke depan)
-    // Jika Bulanan (History Mingguan), prediksi m=1 s/d m=4 (4 minggu ke depan)
-    $jangka_waktu = ($target_peramalan === 'mingguan') ? 7 : 4;
-    $label_waktu  = ($target_peramalan === 'mingguan') ? 'Hari' : 'Minggu';
+        
+        // Prediksi untuk masa depan
+        $hasilPeramalan = 0;
+        
+        // Jika Mingguan (History Harian), prediksi m=1 s/d m=7 (7 hari ke depan)
+        // Jika Bulanan (History Mingguan), prediksi m=1 s/d m=4 (4 minggu ke depan)
+        $jangka_waktu = ($target_peramalan === 'mingguan') ? 7 : 4;
+        $label_waktu  = ($target_peramalan === 'mingguan') ? 'Hari' : 'Minggu';
 
-    for ($m = 1; $m <= $jangka_waktu; $m++) {
-        $prediksi = max(0, $a[$n-1] + ($m * $b[$n-1]));
-        $forecast_breakdown[] = [
-            'label' => $label_waktu . ' ' . $m,
-            'prediksi' => round($prediksi)
-        ];
-        $hasilPeramalan += $prediksi;
-    }
-    $hasilPeramalan = round($hasilPeramalan);
-    
-    $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
-    $akurasi  = round(100 - $avg_mape, 1);
-    
-    if ($avg_mape <= 10) {
-        $kualitas = "Sangat Baik";
-    } elseif ($avg_mape <= 25) {
-        $kualitas = "Baik";
+        for ($m = 1; $m <= $jangka_waktu; $m++) {
+            $prediksi = max(0, $a[$n-1] + ($m * $b[$n-1]));
+            $forecast_breakdown[] = [
+                'label' => $label_waktu . ' ' . $m,
+                'prediksi' => round($prediksi)
+            ];
+            $hasilPeramalan += $prediksi;
+        }
+        $hasilPeramalan = round($hasilPeramalan);
+        
+        $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
+        $akurasi  = round(100 - $avg_mape, 1);
+        
+        if ($avg_mape <= 10) {
+            $kualitas = "Sangat Baik";
+        } elseif ($avg_mape <= 25) {
+            $kualitas = "Baik";
+        } else {
+            $kualitas = "Cukup / Perlu Perhatian";
+        }
     } else {
-        $kualitas = "Cukup / Perlu Perhatian";
+        $dataCukup = false;
     }
 }
 ?>
@@ -355,7 +348,19 @@ if ($hitung) {
     <div class="card-peramalan-right" style="border-left:1px solid var(--border-color); padding-left:40px;">
         <h3 style="font-size:16px; font-weight:700; margin-bottom:24px;">Hasil Peramalan</h3>
         
-        <?php if ($hitung && isset($hasilPeramalan)): ?>
+        <?php if ($hitung && isset($dataCukup) && !$dataCukup): ?>
+            <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:20px; text-align:center;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:32px; color:#ea580c; margin-bottom:12px; display:block;"></i>
+                <div style="font-size:15px; font-weight:700; color:#9a3412; margin-bottom:8px;">Data Penjualan Belum Mencukupi</div>
+                <div style="font-size:13px; color:#7c2d12; line-height:1.6;">
+                    Barang <strong><?= htmlspecialchars($nama_produk_terpilih ?: $kode_barang) ?></strong> baru memiliki <strong><?= $n ?> transaksi asli</strong> di database.<br>
+                    Metode DES membutuhkan minimal <strong>3 periode</strong> transaksi penjualan nyata agar peramalan akurat dan sesuai histori penjualan.
+                </div>
+                <div style="font-size:12px; color:#9a3412; margin-top:12px; background:#ffedd5; padding:8px 12px; border-radius:6px; display:inline-block;">
+                    <i class="fa-solid fa-circle-info"></i> Silakan lakukan transaksi kasir untuk barang ini terlebih dahulu, atau pilih barang lain yang memiliki riwayat penjualan.
+                </div>
+            </div>
+        <?php elseif ($hitung && isset($hasilPeramalan)): ?>
             <div style="margin-bottom:16px;">
                 <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Target Waktu</div>
                 <div style="font-size:14px; font-weight:600;"><?= $target_peramalan === 'mingguan' ? 'Minggu Depan' : 'Bulan Depan' ?></div>
@@ -423,6 +428,7 @@ if ($hitung) {
     </div>
 </div>
 
+<?php if ($hitung && isset($dataCukup) && $dataCukup): ?>
 <!-- ── TABEL DATA PERAMALAN (Hidden by default) ───────────────────────── -->
 <div id="detailPerhitungan" style="display:none; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
     <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
@@ -481,6 +487,7 @@ if ($hitung) {
         </table>
     </div>
 </div>
+<?php endif; ?>
 </div> <!-- Close peramalan-print-area -->
 
 <!-- RIWAYAT PERAMALAN -->
