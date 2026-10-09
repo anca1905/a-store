@@ -21,6 +21,14 @@ $kode_barang = $conn->real_escape_string($_GET['kode_barang'] ?? '');
 $target_peramalan = $_GET['target_peramalan'] ?? 'mingguan';
 $target_peramalan = in_array($target_peramalan, ['mingguan', 'bulanan']) ? $target_peramalan : 'mingguan';
 
+// Tanggal Acuan Perhitungan (Mundur dari tanggal ini)
+$tanggal_acuan = !empty($_GET['tanggal_acuan']) ? preg_replace('/[^0-9\-]/', '', $_GET['tanggal_acuan']) : date('Y-m-d');
+$ts_acuan = strtotime($tanggal_acuan);
+if (!$ts_acuan) {
+    $tanggal_acuan = date('Y-m-d');
+    $ts_acuan = strtotime($tanggal_acuan);
+}
+
 // Jumlah periode kedepan (1 minggu, 2 minggu, dst / 1 bulan, 2 bulan, dst)
 $jumlah_target = max(1, (int)($_GET['jumlah_target'] ?? 1));
 
@@ -43,7 +51,15 @@ if ($target_peramalan === 'mingguan') {
     $default_n           = max(4, $total_steps);
 }
 
-$n_periode = max(3, (int)($_GET['n_periode'] ?? $default_n));
+$prev_target = $_GET['prev_target'] ?? $target_peramalan;
+$target_berubah = isset($_GET['prev_target']) && $_GET['prev_target'] !== $target_peramalan;
+
+if ($target_berubah || !isset($_GET['n_periode'])) {
+    $n_periode = $default_n;
+} else {
+    $n_periode = max(3, (int)$_GET['n_periode']);
+}
+
 $alpha     = isset($_GET['alpha']) ? floatval($_GET['alpha']) : 0.1;
 $alpha     = in_array($alpha, [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]) ? $alpha : 0.1;
 $hitung    = isset($_GET['kode_barang']) && $kode_barang !== '';
@@ -75,43 +91,90 @@ if ($hitung) {
         $nama_produk_terpilih = $rbt['nama_produk'];
     }
     if ($target_peramalan === 'bulanan') {
-        // PERAMALAN BULANAN (History Mingguan)
+        // PERAMALAN BULANAN (History Mingguan: Interval 7 Hari Mundur dari Tanggal Acuan)
+        $oldest_start = date('Y-m-d', strtotime('-' . (($n_periode - 1) * 7 + 6) . ' days', $ts_acuan));
+        $newest_end   = date('Y-m-d', $ts_acuan);
+
         $sql = "SELECT 
-                    YEARWEEK(p.tanggal_waktu, 1) as periode_grup,
-                    MIN(DATE(p.tanggal_waktu)) as tgl_awal,
+                    DATE(p.tanggal_waktu) as tgl,
                     SUM(d.qty) as total_qty
                 FROM tbl_detail_penjualan d
                 JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
                 WHERE d.kode_barang = '$kode_barang'
-                GROUP BY periode_grup
-                ORDER BY periode_grup DESC
-                LIMIT $n_periode";
+                  AND DATE(p.tanggal_waktu) BETWEEN '$oldest_start' AND '$newest_end'
+                GROUP BY DATE(p.tanggal_waktu)";
+
+        $qD = get_query($conn, $sql);
+        $daily_sales = [];
+        while ($r = $qD->fetch_assoc()) {
+            $daily_sales[$r['tgl']] = (float)$r['total_qty'];
+        }
+
+        $rows = [];
+        for ($w = 1; $w <= $n_periode; $w++) {
+            $step_back = $n_periode - $w;
+            $end_ts   = strtotime("-" . ($step_back * 7) . " days", $ts_acuan);
+            $start_ts = strtotime("-" . ($step_back * 7 + 6) . " days", $ts_acuan);
+
+            $period_qty = 0;
+            $cur_ts = $start_ts;
+            while ($cur_ts <= $end_ts) {
+                $cur_ymd = date('Y-m-d', $cur_ts);
+                if (isset($daily_sales[$cur_ymd])) {
+                    $period_qty += $daily_sales[$cur_ymd];
+                }
+                $cur_ts = strtotime("+1 day", $cur_ts);
+            }
+
+            $rows[] = [
+                'periode_num'   => $w,
+                'label_rentang' => date('d M Y', $start_ts) . ' - ' . date('d M Y', $end_ts),
+                'tgl_awal'      => date('d M Y', $start_ts),
+                'tgl_akhir'     => date('d M Y', $end_ts),
+                'total_qty'     => $period_qty
+            ];
+        }
     } else {
-        // PERAMALAN MINGGUAN (History Harian)
+        // PERAMALAN MINGGUAN (History Harian: Interval 1 Hari Mundur dari Tanggal Acuan)
+        $oldest_start = date('Y-m-d', strtotime('-' . ($n_periode - 1) . ' days', $ts_acuan));
+        $newest_end   = date('Y-m-d', $ts_acuan);
+
         $sql = "SELECT 
-                    DATE(p.tanggal_waktu) as periode_grup,
-                    DATE(p.tanggal_waktu) as tgl_awal,
+                    DATE(p.tanggal_waktu) as tgl,
                     SUM(d.qty) as total_qty
                 FROM tbl_detail_penjualan d
                 JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
                 WHERE d.kode_barang = '$kode_barang'
-                GROUP BY periode_grup
-                ORDER BY periode_grup DESC
-                LIMIT $n_periode";
+                  AND DATE(p.tanggal_waktu) BETWEEN '$oldest_start' AND '$newest_end'
+                GROUP BY DATE(p.tanggal_waktu)";
+
+        $qD = get_query($conn, $sql);
+        $daily_sales = [];
+        while ($r = $qD->fetch_assoc()) {
+            $daily_sales[$r['tgl']] = (float)$r['total_qty'];
+        }
+
+        $rows = [];
+        for ($h = 1; $h <= $n_periode; $h++) {
+            $step_back = $n_periode - $h;
+            $cur_ts = strtotime("-" . $step_back . " days", $ts_acuan);
+            $cur_ymd = date('Y-m-d', $cur_ts);
+            $qty = isset($daily_sales[$cur_ymd]) ? $daily_sales[$cur_ymd] : 0;
+
+            $rows[] = [
+                'periode_num'   => $h,
+                'label_rentang' => date('d M Y', $cur_ts),
+                'tgl_awal'      => date('d M Y', $cur_ts),
+                'tgl_akhir'     => date('d M Y', $cur_ts),
+                'total_qty'     => $qty
+            ];
+        }
     }
 
-    $qD = get_query($conn, $sql);
-    $raw_data = [];
-    while ($r = $qD->fetch_assoc()) {
-        $r['tgl_awal'] = date('d M Y', strtotime($r['tgl_awal']));
-        $raw_data[] = $r;
-    }
-    $raw_data = array_reverse($raw_data);
-    
-    $rows = $raw_data;
     $n = count($rows);
-    
-    if ($n >= 3) {
+    $total_aktual_terjual = array_sum(array_column($rows, 'total_qty'));
+
+    if ($n >= 3 && $total_aktual_terjual > 0) {
         $dataCukup = true;
         $aktual = array_map(function($item) { return (float)$item['total_qty']; }, $rows);
         
@@ -150,11 +213,25 @@ if ($hitung) {
         for ($m = 1; $m <= $total_steps; $m++) {
             $prediksi = max(0, $a[$n-1] + ($m * $b[$n-1]));
             $group_num = (int)ceil($m / $step_per_group);
+
+            if ($target_peramalan === 'bulanan') {
+                $start_m_ts = strtotime("+" . (($m - 1) * 7 + 1) . " days", $ts_acuan);
+                $end_m_ts   = strtotime("+" . ($m * 7) . " days", $ts_acuan);
+                $label_m    = 'Minggu Depan ' . $m;
+                $rentang_m  = date('d M Y', $start_m_ts) . ' - ' . date('d M Y', $end_m_ts);
+            } else {
+                $m_ts       = strtotime("+" . $m . " days", $ts_acuan);
+                $label_m    = 'Hari Depan ' . $m;
+                $rentang_m  = date('d M Y', $m_ts);
+            }
+
             $forecast_breakdown[] = [
-                'm'         => $m,
-                'group_num' => $group_num,
-                'label'     => $satuan_data . ' ' . $m,
-                'prediksi'  => round($prediksi)
+                'm'             => $m,
+                'group_num'     => $group_num,
+                'label'         => $label_m,
+                'rentang_m'     => $rentang_m,
+                'prediksi'      => round($prediksi),
+                'prediksi_raw'  => $prediksi
             ];
             $hasilPeramalan += $prediksi;
         }
@@ -170,10 +247,21 @@ if ($hitung) {
                     $g_total += $forecast_breakdown[$s - 1]['prediksi'];
                 }
             }
+
+            if ($target_peramalan === 'bulanan') {
+                $g_start_ts = strtotime("+" . (($g - 1) * 28 + 1) . " days", $ts_acuan);
+                $g_end_ts   = strtotime("+" . ($g * 28) . " days", $ts_acuan);
+                $sublabel   = date('d M Y', $g_start_ts) . ' - ' . date('d M Y', $g_end_ts);
+            } else {
+                $g_start_ts = strtotime("+" . (($g - 1) * 7 + 1) . " days", $ts_acuan);
+                $g_end_ts   = strtotime("+" . ($g * 7) . " days", $ts_acuan);
+                $sublabel   = date('d M Y', $g_start_ts) . ' - ' . date('d M Y', $g_end_ts);
+            }
+
             $group_breakdown[] = [
                 'nomor'     => $g,
                 'label'     => $satuan_waktu . ' ke-' . $g,
-                'sublabel'  => '(' . $satuan_data . ' ' . $start_step . ' s/d ' . $end_step . ')',
+                'sublabel'  => $sublabel,
                 'total_qty' => $g_total
             ];
         }
@@ -319,9 +407,10 @@ if ($hitung) {
     </div>
 
     <div class="print-only" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:12px;">
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+        <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:12px;">
             <div><span style="color:#64748b;">Nama Barang:</span> <strong style="color:#0f172a;"><?= htmlspecialchars($nama_produk_terpilih ?: $kode_barang) ?></strong></div>
             <div><span style="color:#64748b;">Target Peramalan:</span> <strong style="color:#0f172a;"><?= htmlspecialchars($label_target_detail) ?></strong></div>
+            <div><span style="color:#64748b;">Tanggal Acuan:</span> <strong style="color:#0f172a;"><?= date('d M Y', $ts_acuan) ?></strong></div>
             <div><span style="color:#64748b;">Periode Data:</span> <strong style="color:#0f172a;"><?= $n_periode ?> <?= $satuan_data ?></strong></div>
             <div><span style="color:#64748b;">Nilai Alpha (α):</span> <strong style="color:#0f172a;"><?= $alpha ?></strong></div>
         </div>
@@ -334,6 +423,7 @@ if ($hitung) {
     <div class="no-print">
         <form method="GET" id="formPeramalan" style="display:flex; flex-direction:column; gap:16px;">
             <input type="hidden" name="page" value="des">
+            <input type="hidden" name="prev_target" value="<?= $target_peramalan ?>">
             
             <!-- Tipe Target Peramalan -->
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
@@ -357,6 +447,15 @@ if ($hitung) {
                     </div>
                     <input type="hidden" name="jumlah_target" id="input_jumlah_target" value="<?= $jumlah_target ?>">
                 </div>
+            </div>
+
+            <!-- Tanggal Acuan (Mulai Hitung Mundur dari Tanggal Ini) -->
+            <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
+                <label class="form-label" style="margin:0;">
+                    Tanggal Acuan
+                    <small style="display:block; color:var(--text-muted); font-size:10px; font-weight:normal;">Mundur dari tgl ini</small>
+                </label>
+                <input type="date" name="tanggal_acuan" id="tanggal_acuan" class="form-control" value="<?= htmlspecialchars($tanggal_acuan) ?>" style="background:var(--bg-body); border-color:transparent;">
             </div>
 
             <!-- Pilih Barang -->
@@ -414,11 +513,11 @@ if ($hitung) {
                 <i class="fa-solid fa-triangle-exclamation" style="font-size:32px; color:#ea580c; margin-bottom:12px; display:block;"></i>
                 <div style="font-size:15px; font-weight:700; color:#9a3412; margin-bottom:8px;">Data Penjualan Belum Mencukupi</div>
                 <div style="font-size:13px; color:#7c2d12; line-height:1.6;">
-                    Barang <strong><?= htmlspecialchars($nama_produk_terpilih ?: $kode_barang) ?></strong> baru memiliki <strong><?= $n ?> transaksi asli</strong> di database.<br>
-                    Metode DES membutuhkan minimal <strong>3 periode</strong> transaksi penjualan nyata agar peramalan akurat dan sesuai histori penjualan.
+                    Barang <strong><?= htmlspecialchars($nama_produk_terpilih ?: $kode_barang) ?></strong> tidak memiliki data penjualan pada rentang <strong><?= !empty($rows) ? ($rows[0]['label_rentang'] . ' s/d ' . $rows[$n-1]['label_rentang']) : 'yang dipilih' ?></strong>.<br>
+                    Metode DES membutuhkan data penjualan nyata agar peramalan akurat dan sesuai histori penjualan.
                 </div>
                 <div style="font-size:12px; color:#9a3412; margin-top:12px; background:#ffedd5; padding:8px 12px; border-radius:6px; display:inline-block;">
-                    <i class="fa-solid fa-circle-info"></i> Silakan lakukan transaksi kasir untuk barang ini terlebih dahulu, atau pilih barang lain yang memiliki riwayat penjualan.
+                    <i class="fa-solid fa-circle-info"></i> Silakan sesuaikan <strong>Tanggal Acuan</strong> atau pilih barang yang memiliki riwayat penjualan pada rentang tersebut.
                 </div>
             </div>
         <?php elseif ($hitung && isset($hasilPeramalan)): ?>
@@ -534,7 +633,7 @@ if ($hitung) {
             <thead>
                 <tr>
                     <th><?= $satuan_data ?> Ke-</th>
-                    <th>Tanggal Awal</th>
+                    <th><?= ($target_peramalan === 'bulanan') ? 'Rentang Waktu (7 Hari)' : 'Tanggal' ?></th>
                     <th>Aktual (X_t)</th>
                     <th>S'_t</th>
                     <th>S"_t</th>
@@ -555,7 +654,7 @@ if ($hitung) {
                 ?>
                 <tr>
                     <td style="font-weight:600;"><?= $i + 1 ?></td>
-                    <td><?= $rows[$i]['tgl_awal'] ?></td>
+                    <td><?= $rows[$i]['label_rentang'] ?></td>
                     <td style="font-weight:600;"><?= $aktual[$i] ?></td>
                     <td><?= number_format($S1[$i], 2) ?></td>
                     <td><?= number_format($S2[$i], 2) ?></td>
@@ -596,6 +695,7 @@ if ($hitung) {
                 <tr>
                     <th>Langkah (m)</th>
                     <th>Periode Target</th>
+                    <th>Rentang Waktu</th>
                     <th>Kelompok</th>
                     <th>Perhitungan: a_t + (m &times; b_t)</th>
                     <th>Hasil Peramalan (Unit)</th>
@@ -610,6 +710,7 @@ if ($hitung) {
                 <tr>
                     <td style="font-weight:600;">m = <?= $m_val ?></td>
                     <td><?= $fb['label'] ?></td>
+                    <td><span style="font-size:11px; color:var(--text-muted); font-weight:600;"><?= $fb['rentang_m'] ?></span></td>
                     <td><span class="badge" style="background:var(--bg-body); color:var(--text-main); font-size:11px; padding:2px 8px; border-radius:12px;"><?= $grp_label ?></span></td>
                     <td style="font-family:monospace; font-size:12px;">
                         <?= number_format($a[$n-1], 2) ?> + (<?= $m_val ?> &times; <?= number_format($b[$n-1], 2) ?>) = <?= number_format($calc_val, 2) ?>
@@ -618,7 +719,7 @@ if ($hitung) {
                 </tr>
                 <?php endforeach; ?>
                 <tr style="background:var(--primary-light); font-weight:800;">
-                    <td colspan="4" style="text-align:right; padding-right:16px; font-size:13px;">
+                    <td colspan="5" style="text-align:right; padding-right:16px; font-size:13px;">
                         TOTAL ESTIMASI KEBUTUHAN STOK (<?= htmlspecialchars($label_target_detail) ?>):
                     </td>
                     <td style="color:var(--primary-color); font-size:16px;">
@@ -738,6 +839,11 @@ function initDurasiDropdown() {
 }
 
 function gantiTipeTarget(val) {
+    const nInput = document.getElementById('input_n_periode');
+    const durasi = parseInt(document.getElementById('input_jumlah_target').value) || 1;
+    if (nInput) {
+        nInput.value = (val === 'mingguan') ? Math.max(7, durasi * 7) : Math.max(4, durasi * 4);
+    }
     document.getElementById('formPeramalan').submit();
 }
 
