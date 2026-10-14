@@ -4,7 +4,7 @@ include 'cek_sesi.php';
 $pageTitle = "Transaksi Penjualan (Kasir)";
 
 // Tarik data semua barang untuk diletakkan di referensi JS (Pencarian Kasir Cepat)
-$qBarang = get_query($conn, "SELECT id_barang, kode_barang, nama_produk, harga, stok_aktual, foto_barang FROM tbl_barang WHERE stok_aktual > 0");
+$qBarang = get_query($conn, "SELECT id_barang, kode_barang, nama_produk, harga_jual as harga, stok_aktual, foto_barang FROM tbl_barang WHERE stok_aktual > 0");
 $barang_array = [];
 while($row = $qBarang->fetch_assoc()) {
     $barang_array[] = $row;

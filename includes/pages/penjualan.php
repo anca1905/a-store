@@ -1,7 +1,17 @@
 <?php
-$qBarang = get_query($conn, "SELECT id_barang, kode_barang, nama_produk, harga_jual as harga, stok_aktual, foto_barang FROM tbl_barang WHERE stok_aktual > 0 ORDER BY nama_produk ASC");
+$qBarang = get_query($conn, "SELECT id_barang, kode_barang, nama_produk, kategori, harga_jual as harga, stok_aktual, foto_barang FROM tbl_barang WHERE stok_aktual > 0 ORDER BY nama_produk ASC");
 $barang_array = [];
 while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
+
+// Tarik daftar kategori unik yang memiliki stok aktif
+$qKategori = get_query($conn, "SELECT DISTINCT kategori FROM tbl_barang WHERE stok_aktual > 0 AND kategori IS NOT NULL AND kategori != '' ORDER BY kategori ASC");
+$kategori_array = [];
+while($rk = $qKategori->fetch_assoc()) {
+    $kt = trim($rk['kategori']);
+    if($kt !== '' && !in_array($kt, $kategori_array)) {
+        $kategori_array[] = $kt;
+    }
+}
 ?>
 
 <div class="dashboard-content-wrapper" style="padding:20px;">
@@ -30,8 +40,20 @@ while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
                 </div>
             </div>
 
+            <!-- ── FILTER KATEGORI BARANG ───────────────────────────── -->
+            <div class="category-filter-bar">
+                <button type="button" class="cat-pill active" data-cat="all" onclick="filterByKategori('all', this)">
+                    <i class="fa-solid fa-border-all" style="font-size:12px; margin-right:6px;"></i> Semua
+                </button>
+                <?php foreach($kategori_array as $kat): ?>
+                <button type="button" class="cat-pill" data-cat="<?= htmlspecialchars($kat) ?>" onclick="filterByKategori('<?= htmlspecialchars(addslashes($kat)) ?>', this)">
+                    <?= htmlspecialchars($kat) ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
+
             <!-- Grid Produk -->
-            <div id="productGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:16px; max-height:calc(100vh - 220px); overflow-y:auto; padding-right:8px; padding-bottom:20px;">
+            <div id="productGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:16px; max-height:calc(100vh - 270px); overflow-y:auto; padding-right:8px; padding-bottom:20px;">
                 <!-- Digenarate via JS -->
             </div>
         </div>
@@ -111,6 +133,51 @@ while($row = $qBarang->fetch_assoc()) $barang_array[] = $row;
 #productGrid::-webkit-scrollbar-thumb, #cartList::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 #productGrid::-webkit-scrollbar-thumb:hover, #cartList::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+.category-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-top: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.category-filter-bar::-webkit-scrollbar { height: 4px; }
+.category-filter-bar::-webkit-scrollbar-track { background: transparent; }
+.category-filter-bar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.category-filter-bar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.cat-pill {
+    padding: 7px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    font-family: inherit;
+    user-select: none;
+}
+.cat-pill:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+.cat-pill.active {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
 .product-card {
     background: #fff; border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; 
     cursor: pointer; text-align: center; transition: all 0.2s ease;
@@ -134,6 +201,7 @@ const grid = document.getElementById('productGrid');
 const searchInput = document.getElementById('searchInput');
 const cartList = document.getElementById('cartList');
 let cart = [];
+let activeCategory = 'all';
 
 function fmt(n) { return new Intl.NumberFormat('id-ID').format(n); }
 
@@ -157,9 +225,14 @@ function renderProducts(products) {
             ? `<img src="${img}" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:10px;">` 
             : `<div style="width:100%; height:110px; background:var(--bg-body); border-radius:8px; margin-bottom:10px; display:flex; align-items:center; justify-content:center; color:var(--text-light); border:1px dashed #cbd5e1;"><i class="fa-solid fa-image fa-2x"></i></div>`;
 
+        const katBadge = p.kategori 
+            ? `<div style="font-size:10px; font-weight:600; color:var(--text-muted); background:var(--bg-body); padding:2px 8px; border-radius:10px; display:inline-block; margin-bottom:4px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${p.kategori}">${p.kategori}</div>` 
+            : '';
+
         card.innerHTML = `
             ${imgHtml}
-            <div style="font-size:13px; font-weight:700; margin-bottom:4px; line-height:1.3; height:34px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p.nama_produk}</div>
+            <div style="font-size:13px; font-weight:700; margin-bottom:4px; line-height:1.3; height:34px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;" title="${p.nama_produk}">${p.nama_produk}</div>
+            ${katBadge}
             <div style="font-size:14px; font-weight:800; color:var(--primary-color); margin-bottom:6px;">Rp ${fmt(p.harga)}</div>
             <div style="font-size:11px; color:var(--text-muted); background:var(--bg-body); padding:3px 6px; border-radius:10px; display:inline-block;">Stok: <b>${p.stok_aktual}</b></div>
         `;
@@ -167,12 +240,32 @@ function renderProducts(products) {
     });
 }
 
-// Fitur Pencarian Cepat
-searchInput.addEventListener('input', (e) => {
-    const kw = e.target.value.toLowerCase();
-    const filtered = dbBarang.filter(b => b.kode_barang.toLowerCase().includes(kw) || b.nama_produk.toLowerCase().includes(kw));
+// Fitur Filter Produk (Kategori & Search)
+function applyProductFilter() {
+    const kw = searchInput.value.toLowerCase().trim();
+    const filtered = dbBarang.filter(b => {
+        const matchKeyword = !kw || b.kode_barang.toLowerCase().includes(kw) || b.nama_produk.toLowerCase().includes(kw);
+        const matchCat = (activeCategory === 'all') || (b.kategori && b.kategori.toLowerCase().trim() === activeCategory.toLowerCase().trim());
+        return matchKeyword && matchCat;
+    });
     renderProducts(filtered);
-});
+}
+
+function filterByKategori(cat, btn) {
+    if (activeCategory === cat && cat !== 'all') {
+        activeCategory = 'all';
+        document.querySelectorAll('.cat-pill').forEach(el => el.classList.remove('active'));
+        const allBtn = document.querySelector('.cat-pill[data-cat="all"]');
+        if (allBtn) allBtn.classList.add('active');
+    } else {
+        activeCategory = cat;
+        document.querySelectorAll('.cat-pill').forEach(el => el.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    }
+    applyProductFilter();
+}
+
+searchInput.addEventListener('input', applyProductFilter);
 
 // Tambah ke Keranjang
 function addToCart(item) {
