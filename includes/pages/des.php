@@ -617,6 +617,31 @@ if ($hitung) {
                     <input type="hidden" name="akurasi" value="<?= max(0, $akurasi) ?>">
                     <input type="hidden" name="target_waktu" value="<?= htmlspecialchars($label_target_detail) ?>">
                     <?php
+                    $history_rows = [];
+                    $total_hist_err = 0;
+                    for ($hi = 0; $hi < $n; $hi++) {
+                        $err_val = null;
+                        $mape_val = null;
+                        if ($hi > 0) {
+                            $err_val = round(abs($aktual[$hi] - $F[$hi]), 2);
+                            $total_hist_err += $err_val;
+                            if ($aktual[$hi] > 0) {
+                                $mape_val = round(($err_val / $aktual[$hi]) * 100, 2);
+                            }
+                        }
+                        $history_rows[] = [
+                            'i'        => $hi + 1,
+                            'label'    => $rows[$hi]['label_rentang'],
+                            'aktual'   => $aktual[$hi],
+                            's1'       => round($S1[$hi], 2),
+                            's2'       => round($S2[$hi], 2),
+                            'a'        => round($a[$hi], 2),
+                            'b'        => round($b[$hi], 2),
+                            'f'        => ($hi > 0) ? round($F[$hi], 2) : null,
+                            'err'      => $err_val,
+                            'mape'     => $mape_val
+                        ];
+                    }
                     $snapshotData = [
                         'tipe' => 'barang',
                         'referensi' => $kode_barang,
@@ -636,6 +661,9 @@ if ($hitung) {
                         'a_t' => isset($a[$n-1]) ? round($a[$n-1], 2) : 0,
                         'b_t' => isset($b[$n-1]) ? round($b[$n-1], 2) : 0,
                         'rentang_historis' => (!empty($rows) && $n > 0) ? ($rows[0]['label_rentang'] . ' s/d ' . $rows[$n-1]['label_rentang']) : '',
+                        'history_rows' => $history_rows,
+                        'total_aktual' => array_sum($aktual),
+                        'total_abs_err' => round($total_hist_err, 2),
                         'group_breakdown' => $group_breakdown,
                         'forecast_breakdown' => $forecast_breakdown
                     ];
@@ -667,7 +695,7 @@ if ($hitung) {
 
 <?php if ($hitung && isset($dataCukup) && $dataCukup): ?>
 <!-- ── TABEL PROYEKSI PERAMALAN MASA DEPAN & DATA HISTORIS (Hidden by default) ── -->
-<div id="detailPerhitungan" style="display:none; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
+<div id="detailPerhitungan" style="display:<?= (isset($_GET['show_detail']) && $_GET['show_detail'] == '1') ? 'block' : 'none' ?>; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
     <!-- Header Utama -->
     <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:#fcfcfc;">
         <div>
@@ -972,7 +1000,49 @@ if ($hitung) {
                 </div>
             </div>
 
-            <!-- Container Rincian Proyeksi Langkah ke-m -->
+            <!-- 1. Container Data Historis & Audit Perhitungan DES (S', S'', a, b, F, Error, MAPE) -->
+            <div id="mdr_history_container" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; overflow:hidden;">
+                <div style="padding:12px 16px; background:#f8fafc; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary-color);"></i>
+                            Audit Detail Perhitungan DES &amp; Evaluasi MAPE (Data Historis)
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+                            Data penjualan historis aktual beserta parameter pemulusan ganda, peramalan F_t, nilai selisih error absolut, dan MAPE.
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
+                    <table class="data-table" style="text-align:center; font-size:12px; margin:0;">
+                        <thead>
+                            <tr style="background:#f1f5f9;">
+                                <th>Ke-</th>
+                                <th>Tanggal / Rentang</th>
+                                <th>Aktual (X_t)</th>
+                                <th>S'_t</th>
+                                <th>S"_t</th>
+                                <th>a_t</th>
+                                <th>b_t</th>
+                                <th>Peramalan (F_t)</th>
+                                <th>Error Absolut (|e_t|)</th>
+                                <th>MAPE (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mdr_history_tbody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                        <tfoot id="mdr_history_tfoot">
+                            <!-- Injected by JS -->
+                        </tfoot>
+                    </table>
+                </div>
+                <div style="padding:8px 14px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.5;">
+                    &bull; <strong>Error Absolut (|e_t|)</strong> = |Aktual (X_t) - Peramalan (F_t)| &bull; <strong>MAPE</strong> = (|e_t| / X_t) &times; 100% &bull; Periode ke-1 adalah inisialisasi ($S'_0, S''_0$).
+                </div>
+            </div>
+
+            <!-- 2. Container Rincian Proyeksi Langkah ke-m -->
             <div id="mdr_breakdown_container" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; overflow:hidden;">
                 <div style="padding:12px 16px; background:#f8fafc; border-bottom:1px solid var(--border-color); font-size:12px; font-weight:700; color:var(--text-main); display:flex; justify-content:space-between; align-items:center;">
                     <span><i class="fa-solid fa-list-check" style="color:var(--primary-color); margin-right:6px;"></i> Rincian Proyeksi Peramalan Langkah ke-m:</span>
@@ -1067,7 +1137,98 @@ function bukaModalDetailRiwayat(id) {
     document.getElementById('mdr_at').textContent = (detail && detail.a_t !== undefined) ? detail.a_t : '—';
     document.getElementById('mdr_bt').textContent = (detail && detail.b_t !== undefined) ? detail.b_t : '—';
     
-    // Breakdown langkah
+    // 1. Audit Data Historis Perhitungan DES (X_t, S', S'', a, b, F, Error, MAPE)
+    const histContainer = document.getElementById('mdr_history_container');
+    const histTbody = document.getElementById('mdr_history_tbody');
+    const histTfoot = document.getElementById('mdr_history_tfoot');
+    histTbody.innerHTML = '';
+    histTfoot.innerHTML = '';
+
+    if (detail && detail.history_rows && detail.history_rows.length > 0) {
+        let totalAkt = 0;
+        let totalErr = 0;
+        let countMape = 0;
+        let sumMape = 0;
+
+        detail.history_rows.forEach(hr => {
+            totalAkt += parseFloat(hr.aktual) || 0;
+            const ftDisp = (hr.f !== null && hr.f !== undefined) ? Number(hr.f).toFixed(2) : '—';
+            const errDisp = (hr.err !== null && hr.err !== undefined) ? Number(hr.err).toFixed(2) : '—';
+            let mapeDisp = '—';
+
+            if (hr.err !== null && hr.err !== undefined) {
+                totalErr += parseFloat(hr.err);
+                if (hr.mape !== null && hr.mape !== undefined) {
+                    mapeDisp = Number(hr.mape).toFixed(2) + '%';
+                    sumMape += parseFloat(hr.mape);
+                    countMape++;
+                } else {
+                    mapeDisp = '<span style="color:var(--text-muted); font-size:11px;" title="Penjualan aktual 0, dilewati agar tidak terjadi division by zero">0%*</span>';
+                }
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:600;">${hr.i}</td>
+                <td>${hr.label}</td>
+                <td style="font-weight:700;">${hr.aktual}</td>
+                <td>${Number(hr.s1).toFixed(2)}</td>
+                <td>${Number(hr.s2).toFixed(2)}</td>
+                <td style="font-weight:600;">${Number(hr.a).toFixed(2)}</td>
+                <td style="font-weight:600;">${Number(hr.b).toFixed(2)}</td>
+                <td style="color:var(--primary-color); font-weight:600;">${ftDisp}</td>
+                <td style="font-weight:600;">${errDisp}</td>
+                <td style="font-weight:600;">${mapeDisp}</td>
+            `;
+            histTbody.appendChild(tr);
+        });
+
+        const avgMape = (detail.avg_mape !== undefined) ? detail.avg_mape : ((countMape > 0) ? (sumMape / countMape).toFixed(2) : 0);
+        const akurasiVal = (detail.akurasi !== undefined) ? detail.akurasi : data.akurasi;
+        const kualitasVal = (detail.kualitas) ? detail.kualitas : '';
+
+        histTfoot.innerHTML = `
+            <tr style="background:#f8fafc; font-weight:700;">
+                <td colspan="2" style="text-align:right;">Total Evaluasi:</td>
+                <td style="font-weight:700;">${totalAkt}</td>
+                <td colspan="5"></td>
+                <td style="font-weight:700; font-size:13px;">${totalErr.toFixed(2)}<br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span></td>
+                <td style="font-weight:800; color:#ea580c; font-size:13px;">${Number(avgMape).toFixed(2)}%<br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Rata-rata MAPE</span></td>
+            </tr>
+            <tr style="background:#f1f5f9; font-weight:700;">
+                <td colspan="8" style="text-align:right; padding-right:16px;">
+                    <span style="font-size:13px;">Tingkat Akurasi Model Historis (100% - MAPE):</span>
+                </td>
+                <td colspan="2" style="color:var(--primary-color); font-size:14px; text-align:center;">
+                    <strong>${akurasiVal}%</strong> <span style="font-size:11px; font-weight:600; color:var(--text-muted);">(${kualitasVal})</span>
+                </td>
+            </tr>
+        `;
+        histContainer.style.display = 'block';
+    } else {
+        histTbody.innerHTML = `<tr><td colspan="10" style="padding:16px; color:var(--text-muted); font-size:12px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i> Memuat audit detail perhitungan historis...</td></tr>`;
+        histContainer.style.display = 'block';
+
+        fetch(`index.php?action=ajax_get_riwayat_detail&id_riwayat=${data.id_riwayat}`)
+            .then(res => res.json())
+            .then(resData => {
+                if (resData && resData.success && resData.history_rows) {
+                    if (!detail) detail = {};
+                    detail.history_rows = resData.history_rows;
+                    detail.avg_mape = resData.avg_mape;
+                    detail.total_abs_err = resData.total_abs_err;
+                    data.detail_json = JSON.stringify(detail);
+                    bukaModalDetailRiwayat(data.id_riwayat);
+                } else {
+                    histTbody.innerHTML = `<tr><td colspan="10" style="padding:16px; color:var(--text-muted); font-size:12px;">Data historis peramalan ini tersimpan sebelum pembaruan sistem. Silakan simpan peramalan baru untuk melihat audit perhitungan lengkap.</td></tr>`;
+                }
+            })
+            .catch(err => {
+                histTbody.innerHTML = `<tr><td colspan="10" style="padding:16px; color:var(--text-muted); font-size:12px;">Detail audit historis tidak dapat dimuat.</td></tr>`;
+            });
+    }
+
+    // 2. Breakdown langkah ke-m
     const tbody = document.getElementById('mdr_breakdown_tbody');
     tbody.innerHTML = '';
     
@@ -1129,11 +1290,11 @@ function bukaModalDetailRiwayat(id) {
         grpContainer.style.display = 'none';
     }
     
-    // Tombol muat ke kalkulator
+    // Tombol muat ke kalkulator (dengan parameter &show_detail=1)
     const targetType = (detail && detail.target_peramalan) ? detail.target_peramalan : (data.target_waktu.indexOf('Bulan') !== -1 ? 'bulanan' : 'mingguan');
     const jumlahT = (detail && detail.jumlah_target) ? detail.jumlah_target : 1;
     const tglA = (detail && detail.tanggal_acuan) ? detail.tanggal_acuan : '';
-    let urlMuat = `index.php?page=des&kode_barang=${encodeURIComponent(data.referensi)}&target_peramalan=${targetType}&jumlah_target=${jumlahT}&n_periode=${data.periode}&alpha=${data.alpha}`;
+    let urlMuat = `index.php?page=des&kode_barang=${encodeURIComponent(data.referensi)}&target_peramalan=${targetType}&jumlah_target=${jumlahT}&n_periode=${data.periode}&alpha=${data.alpha}&show_detail=1`;
     if (tglA) {
         urlMuat += `&tanggal_acuan=${encodeURIComponent(tglA)}`;
     }
@@ -1157,12 +1318,56 @@ function cetakModalRiwayat() {
         }
     } catch(e) {}
     
-    const printWin = window.open('', '_blank', 'width=900,height=700');
+    const printWin = window.open('', '_blank', 'width=950,height=750');
     if (!printWin) {
         alert('Izinkan pop-up peramban untuk mencetak laporan riwayat.');
         return;
     }
     
+    // 1. Render Tabel Data Historis DES untuk cetak
+    let histRowsHtml = '';
+    if (detail && detail.history_rows && detail.history_rows.length > 0) {
+        let totalAkt = 0;
+        let totalErr = 0;
+        detail.history_rows.forEach(hr => {
+            totalAkt += parseFloat(hr.aktual) || 0;
+            const ft = (hr.f !== null && hr.f !== undefined) ? Number(hr.f).toFixed(2) : '—';
+            const err = (hr.err !== null && hr.err !== undefined) ? Number(hr.err).toFixed(2) : '—';
+            let mape = '—';
+            if (hr.err !== null && hr.err !== undefined) {
+                totalErr += parseFloat(hr.err);
+                mape = (hr.mape !== null && hr.mape !== undefined) ? Number(hr.mape).toFixed(2) + '%' : '0%*';
+            }
+            histRowsHtml += `<tr>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${hr.i}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${hr.label}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center; font-weight:bold;">${hr.aktual}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${Number(hr.s1).toFixed(2)}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${Number(hr.s2).toFixed(2)}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${Number(hr.a).toFixed(2)}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${Number(hr.b).toFixed(2)}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center; color:#0284c7; font-weight:bold;">${ft}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${err}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${mape}</td>
+            </tr>`;
+        });
+        const avgMapeVal = detail.avg_mape !== undefined ? Number(detail.avg_mape).toFixed(2) + '%' : '-';
+        histRowsHtml += `
+            <tr style="background:#f8fafc; font-weight:bold;">
+                <td colspan="2" style="text-align:right; padding:6px; border:1px solid #cbd5e1;">Total Evaluasi:</td>
+                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalAkt}</td>
+                <td colspan="5" style="border:1px solid #cbd5e1;"></td>
+                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalErr.toFixed(2)}</td>
+                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#ea580c;">${avgMapeVal}</td>
+            </tr>
+            <tr style="background:#f1f5f9; font-weight:bold;">
+                <td colspan="8" style="text-align:right; padding:6px 12px; border:1px solid #cbd5e1;">Tingkat Akurasi Model Historis (100% - MAPE):</td>
+                <td colspan="2" style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#0284c7; font-size:13px;">${data.akurasi}% ${detail.kualitas ? '(' + detail.kualitas + ')' : ''}</td>
+            </tr>
+        `;
+    }
+
+    // 2. Render Tabel Proyeksi Masa Depan
     let rowsHtml = '';
     if (detail && detail.forecast_breakdown && detail.forecast_breakdown.length > 0) {
         const satW = detail.satuan_waktu || 'Minggu';
@@ -1190,16 +1395,18 @@ function cetakModalRiwayat() {
     const html = `<!DOCTYPE html>
     <html>
     <head>
-        <title>Laporan Riwayat Peramalan #${data.id_riwayat}</title>
+        <title>Laporan Detail Riwayat Peramalan #${data.id_riwayat}</title>
         <style>
-            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; }
-            table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
-            th { background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px; font-weight: 700; text-align: center; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; font-size: 11px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+            th { background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px; font-weight: 700; text-align: center; }
+            td { border: 1px solid #cbd5e1; }
             .kop { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; }
+            .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; }
+            h4 { margin: 18px 0 6px 0; font-size: 12px; font-weight: 700; }
             @media print {
                 body { padding: 0; }
-                @page { margin: 15mm; size: auto; }
+                @page { margin: 12mm; size: auto; }
             }
         </style>
     </head>
@@ -1207,7 +1414,7 @@ function cetakModalRiwayat() {
         <div class="kop">
             <div>
                 <h2 style="margin:0; font-size:20px; font-weight:900; letter-spacing:1px;">A STORE</h2>
-                <div style="font-size:12px; color:#475569; margin-top:3px;">Laporan Riwayat Hasil Peramalan Stok — Double Exponential Smoothing</div>
+                <div style="font-size:12px; color:#475569; margin-top:3px;">Laporan Rincian Riwayat Peramalan Stok — Double Exponential Smoothing</div>
             </div>
             <div style="text-align:right; font-size:11px; color:#64748b;">
                 ID Riwayat: <strong>#${data.id_riwayat}</strong><br>
@@ -1219,10 +1426,33 @@ function cetakModalRiwayat() {
             <div><strong>Objek Analisis:</strong> ${data.referensi} — ${data.nama_referensi}</div>
             <div><strong>Target Proyeksi:</strong> ${data.target_waktu}</div>
             <div><strong>Parameter Model:</strong> Alpha (α) = ${data.alpha} | Periode = ${data.periode}</div>
-            <div><strong>Hasil &amp; Akurasi:</strong> <span style="font-size:14px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '% &bull; ' : ''}Akurasi: ${data.akurasi}%${detail && detail.kualitas ? ' - ' + detail.kualitas : ''})</div>
+            <div><strong>Hasil &amp; Evaluasi:</strong> <span style="font-size:13px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '% &bull; ' : ''}Akurasi: ${data.akurasi}%${detail && detail.kualitas ? ' - ' + detail.kualitas : ''})</div>
         </div>
 
-        <h4 style="margin:20px 0 6px 0; font-size:13px; font-weight:700;">Rincian Proyeksi Peramalan Masa Depan (Brown's DES):</h4>
+        ${histRowsHtml ? `
+        <h4>1. Audit Detail Perhitungan DES &amp; Evaluasi MAPE (Data Historis):</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ke-</th>
+                    <th>Tanggal / Rentang</th>
+                    <th>Aktual (X_t)</th>
+                    <th>S'_t</th>
+                    <th>S"_t</th>
+                    <th>a_t</th>
+                    <th>b_t</th>
+                    <th>Peramalan (F_t)</th>
+                    <th>Error Absolut (|e_t|)</th>
+                    <th>MAPE (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${histRowsHtml}
+            </tbody>
+        </table>
+        ` : ''}
+
+        <h4>2. Rincian Proyeksi Peramalan Masa Depan (Brown's DES):</h4>
         <table>
             <thead>
                 <tr>
@@ -1237,12 +1467,12 @@ function cetakModalRiwayat() {
                 ${rowsHtml}
                 <tr style="background:#f1f5f9; font-weight:bold;">
                     <td colspan="4" style="text-align:right; padding:8px 12px; border:1px solid #cbd5e1;">TOTAL ESTIMASI KEBUTUHAN STOK:</td>
-                    <td style="text-align:center; padding:8px; border:1px solid #cbd5e1; font-size:14px; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</td>
+                    <td style="text-align:center; padding:8px; border:1px solid #cbd5e1; font-size:13px; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</td>
                 </tr>
             </tbody>
         </table>
 
-        <div style="margin-top:35px; display:flex; justify-content:space-between; font-size:12px;">
+        <div style="margin-top:35px; display:flex; justify-content:space-between; font-size:11px;">
             <div style="color:#64748b;">Dicetak dari Sistem Manajemen Inventori A STORE</div>
             <div style="text-align:center; width:200px;">
                 <div>Mengetahui,</div>
@@ -1262,6 +1492,18 @@ function cetakModalRiwayat() {
     printWin.document.write(html);
     printWin.document.close();
 }
+
+// Auto-scroll jika show_detail=1
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('show_detail') === '1') {
+        const dp = document.getElementById('detailPerhitungan');
+        if (dp) {
+            dp.style.display = 'block';
+            setTimeout(() => { dp.scrollIntoView({ behavior: 'smooth' }); }, 150);
+        }
+    }
+});
 
 const presetsMingguan = [
     { val: 1, label: '1 Minggu Kedepan (7 Hari)' },

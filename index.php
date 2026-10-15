@@ -31,6 +31,198 @@ try {
     }
 } catch (Exception $e) {}
 
+// AJAX: Ambil detail perhitungan historis untuk modal riwayat peramalan
+if (isset($_GET['action']) && $_GET['action'] === 'ajax_get_riwayat_detail' && isset($_GET['id_riwayat'])) {
+    header('Content-Type: application/json');
+    $idR = (int)$_GET['id_riwayat'];
+    $qR = $conn->query("SELECT * FROM tbl_riwayat_peramalan WHERE id_riwayat = $idR");
+    if (!$qR || $qR->num_rows == 0) {
+        echo json_encode(['success' => false, 'message' => 'Riwayat tidak ditemukan']);
+        exit;
+    }
+    $rRow = $qR->fetch_assoc();
+    $det = !empty($rRow['detail_json']) ? json_decode($rRow['detail_json'], true) : [];
+    
+    if (!empty($det['history_rows'])) {
+        echo json_encode([
+            'success' => true,
+            'history_rows' => $det['history_rows'],
+            'avg_mape' => $det['avg_mape'] ?? null,
+            'total_abs_err' => $det['total_abs_err'] ?? null,
+            'total_aktual' => $det['total_aktual'] ?? null
+        ]);
+        exit;
+    }
+    
+    // Rekonstruksi jika riwayat lama belum menyimpan history_rows
+    $tipe = $rRow['tipe'];
+    $ref = $conn->real_escape_string($rRow['referensi']);
+    $n_periode = max(3, (int)$rRow['periode']);
+    $alpha = (float)$rRow['alpha'];
+    $target_peramalan = $det['target_peramalan'] ?? (strpos($rRow['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
+    $tanggal_acuan = !empty($det['tanggal_acuan']) ? $det['tanggal_acuan'] : date('Y-m-d', strtotime($rRow['tanggal_hitung']));
+    $ts_acuan = strtotime($tanggal_acuan);
+    
+    $rows = [];
+    if ($tipe === 'barang') {
+        if ($target_peramalan === 'bulanan') {
+            $oldest_start = date('Y-m-d', strtotime('-' . (($n_periode - 1) * 7 + 6) . ' days', $ts_acuan));
+            $newest_end   = date('Y-m-d', $ts_acuan);
+            $sql = "SELECT DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty
+                    FROM tbl_detail_penjualan d
+                    JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+                    WHERE d.kode_barang = '$ref' AND DATE(p.tanggal_waktu) BETWEEN '$oldest_start' AND '$newest_end'
+                    GROUP BY DATE(p.tanggal_waktu)";
+            $qD = $conn->query($sql);
+            $daily_sales = [];
+            while ($r = $qD->fetch_assoc()) { $daily_sales[$r['tgl']] = (float)$r['total_qty']; }
+            for ($w = 1; $w <= $n_periode; $w++) {
+                $step_back = $n_periode - $w;
+                $end_ts   = strtotime("-" . ($step_back * 7) . " days", $ts_acuan);
+                $start_ts = strtotime("-" . ($step_back * 7 + 6) . " days", $ts_acuan);
+                $period_qty = 0;
+                $cur_ts = $start_ts;
+                while ($cur_ts <= $end_ts) {
+                    $cur_ymd = date('Y-m-d', $cur_ts);
+                    if (isset($daily_sales[$cur_ymd])) $period_qty += $daily_sales[$cur_ymd];
+                    $cur_ts = strtotime("+1 day", $cur_ts);
+                }
+                $rows[] = ['label' => date('d M Y', $start_ts) . ' - ' . date('d M Y', $end_ts), 'qty' => $period_qty];
+            }
+        } else {
+            $oldest_start = date('Y-m-d', strtotime('-' . ($n_periode - 1) . ' days', $ts_acuan));
+            $newest_end   = date('Y-m-d', $ts_acuan);
+            $sql = "SELECT DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty
+                    FROM tbl_detail_penjualan d
+                    JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+                    WHERE d.kode_barang = '$ref' AND DATE(p.tanggal_waktu) BETWEEN '$oldest_start' AND '$newest_end'
+                    GROUP BY DATE(p.tanggal_waktu)";
+            $qD = $conn->query($sql);
+            $daily_sales = [];
+            while ($r = $qD->fetch_assoc()) { $daily_sales[$r['tgl']] = (float)$r['total_qty']; }
+            for ($h = 1; $h <= $n_periode; $h++) {
+                $step_back = $n_periode - $h;
+                $cur_ts = strtotime("-" . $step_back . " days", $ts_acuan);
+                $cur_ymd = date('Y-m-d', $cur_ts);
+                $rows[] = ['label' => date('d M Y', $cur_ts), 'qty' => $daily_sales[$cur_ymd] ?? 0];
+            }
+        }
+    } else {
+        $kat_nama = $rRow['nama_referensi'];
+        if ($target_peramalan === 'bulanan') {
+            $oldest_start = date('Y-m-d', strtotime('-' . (($n_periode - 1) * 7 + 6) . ' days', $ts_acuan));
+            $newest_end   = date('Y-m-d', $ts_acuan);
+            $sql = "SELECT DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty
+                    FROM tbl_detail_penjualan d
+                    JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+                    JOIN tbl_barang b ON d.kode_barang = b.kode_barang
+                    WHERE (b.kategori = '$kat_nama' OR b.id_kategori = '$ref')
+                      AND DATE(p.tanggal_waktu) BETWEEN '$oldest_start' AND '$newest_end'
+                    GROUP BY DATE(p.tanggal_waktu)";
+            $qD = $conn->query($sql);
+            $daily_sales = [];
+            while ($r = $qD->fetch_assoc()) { $daily_sales[$r['tgl']] = (float)$r['total_qty']; }
+            for ($w = 1; $w <= $n_periode; $w++) {
+                $step_back = $n_periode - $w;
+                $end_ts   = strtotime("-" . ($step_back * 7) . " days", $ts_acuan);
+                $start_ts = strtotime("-" . ($step_back * 7 + 6) . " days", $ts_acuan);
+                $period_qty = 0;
+                $cur_ts = $start_ts;
+                while ($cur_ts <= $end_ts) {
+                    $cur_ymd = date('Y-m-d', $cur_ts);
+                    if (isset($daily_sales[$cur_ymd])) $period_qty += $daily_sales[$cur_ymd];
+                    $cur_ts = strtotime("+1 day", $cur_ts);
+                }
+                $rows[] = ['label' => date('d M Y', $start_ts) . ' - ' . date('d M Y', $end_ts), 'qty' => $period_qty];
+            }
+        } else {
+            $oldest_start = date('Y-m-d', strtotime('-' . ($n_periode - 1) . ' days', $ts_acuan));
+            $newest_end   = date('Y-m-d', $ts_acuan);
+            $sql = "SELECT DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty
+                    FROM tbl_detail_penjualan d
+                    JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+                    JOIN tbl_barang b ON d.kode_barang = b.kode_barang
+                    WHERE (b.kategori = '$kat_nama' OR b.id_kategori = '$ref')
+                      AND DATE(p.tanggal_waktu) BETWEEN '$oldest_start' AND '$newest_end'
+                    GROUP BY DATE(p.tanggal_waktu)";
+            $qD = $conn->query($sql);
+            $daily_sales = [];
+            while ($r = $qD->fetch_assoc()) { $daily_sales[$r['tgl']] = (float)$r['total_qty']; }
+            for ($h = 1; $h <= $n_periode; $h++) {
+                $step_back = $n_periode - $h;
+                $cur_ts = strtotime("-" . $step_back . " days", $ts_acuan);
+                $cur_ymd = date('Y-m-d', $cur_ts);
+                $rows[] = ['label' => date('d M Y', $cur_ts), 'qty' => $daily_sales[$cur_ymd] ?? 0];
+            }
+        }
+    }
+    
+    $n = count($rows);
+    if ($n < 3) {
+        echo json_encode(['success' => false, 'message' => 'Data historis tidak mencukupi']);
+        exit;
+    }
+    
+    $aktual = array_column($rows, 'qty');
+    $S1 = []; $S2 = []; $a = []; $b = []; $F = [];
+    $S1[0] = $aktual[0]; $S2[0] = $aktual[0];
+    $a[0] = 2 * $S1[0] - $S2[0];
+    $b[0] = ($alpha / (1 - $alpha)) * ($S1[0] - $S2[0]);
+    $F[0] = 0;
+    
+    $sum_mape = 0; $count_mape = 0; $total_abs_err = 0;
+    for ($i = 1; $i < $n; $i++) {
+        $Xi = $aktual[$i];
+        $S1[$i] = $alpha * $Xi + (1 - $alpha) * $S1[$i-1];
+        $S2[$i] = $alpha * $S1[$i] + (1 - $alpha) * $S2[$i-1];
+        $a[$i]  = 2 * $S1[$i] - $S2[$i];
+        $b[$i]  = ($alpha / (1 - $alpha)) * ($S1[$i] - $S2[$i]);
+        $F[$i]  = $a[$i-1] + $b[$i-1] * 1;
+        $err = abs($Xi - $F[$i]);
+        $total_abs_err += $err;
+        if ($Xi > 0) {
+            $sum_mape += ($err / $Xi) * 100;
+            $count_mape++;
+        }
+    }
+    
+    $history_rows = [];
+    for ($i = 0; $i < $n; $i++) {
+        $err_val = ($i > 0) ? round(abs($aktual[$i] - $F[$i]), 2) : null;
+        $mape_val = ($i > 0 && $aktual[$i] > 0) ? round(($err_val / $aktual[$i]) * 100, 2) : null;
+        $history_rows[] = [
+            'i' => $i + 1,
+            'label' => $rows[$i]['label'],
+            'aktual' => $aktual[$i],
+            's1' => round($S1[$i], 2),
+            's2' => round($S2[$i], 2),
+            'a' => round($a[$i], 2),
+            'b' => round($b[$i], 2),
+            'f' => ($i > 0) ? round($F[$i], 2) : null,
+            'err' => $err_val,
+            'mape' => $mape_val
+        ];
+    }
+    
+    $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
+    $det['history_rows'] = $history_rows;
+    $det['avg_mape'] = $avg_mape;
+    $det['total_abs_err'] = round($total_abs_err, 2);
+    $det['total_aktual'] = array_sum($aktual);
+    
+    $newJsonEsc = $conn->real_escape_string(json_encode($det));
+    $conn->query("UPDATE tbl_riwayat_peramalan SET detail_json='$newJsonEsc' WHERE id_riwayat=$idR");
+    
+    echo json_encode([
+        'success' => true,
+        'history_rows' => $history_rows,
+        'avg_mape' => $avg_mape,
+        'total_abs_err' => round($total_abs_err, 2),
+        'total_aktual' => array_sum($aktual)
+    ]);
+    exit;
+}
+
 // Auto-migrate foreign keys (Relasi antar tabel untuk phpMyAdmin Designer)
 try {
     $checkFkBarang = $conn->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tbl_barang' AND CONSTRAINT_NAME='fk_barang_kategori'");
