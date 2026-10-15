@@ -23,6 +23,14 @@ if ($checkFotoProfil && $checkFotoProfil->num_rows == 0) {
     $conn->query("ALTER TABLE tbl_users ADD COLUMN foto_profil VARCHAR(255) DEFAULT NULL AFTER nama_lengkap");
 }
 
+// Auto-migrate detail_json di tbl_riwayat_peramalan
+try {
+    $checkDetailJson = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'detail_json'");
+    if ($checkDetailJson && $checkDetailJson->num_rows == 0) {
+        $conn->query("ALTER TABLE tbl_riwayat_peramalan ADD COLUMN detail_json LONGTEXT DEFAULT NULL");
+    }
+} catch (Exception $e) {}
+
 // Auto-migrate foreign keys (Relasi antar tabel untuk phpMyAdmin Designer)
 try {
     $checkFkBarang = $conn->query("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tbl_barang' AND CONSTRAINT_NAME='fk_barang_kategori'");

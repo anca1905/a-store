@@ -1,4 +1,11 @@
 <?php
+// Handle Hapus Riwayat Peramalan
+if (isset($_GET['action']) && $_GET['action'] == 'hapus_riwayat' && isset($_GET['id_riwayat'])) {
+    $idHapus = (int)$_GET['id_riwayat'];
+    get_query($conn, "DELETE FROM tbl_riwayat_peramalan WHERE id_riwayat=$idHapus AND tipe='barang'");
+    $msgRiwayat = "Riwayat peramalan berhasil dihapus!";
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'simpan_riwayat') {
     $kb = $conn->real_escape_string($_POST['kode_barang']);
     $nama = $conn->real_escape_string($_POST['nama_barang']);
@@ -6,10 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $alpha_val = (float)$_POST['alpha'];
     $hasil = (int)$_POST['hasil'];
     $akurasi_val = (float)$_POST['akurasi'];
-    $target = $_POST['target_waktu'];
+    $target = $conn->real_escape_string($_POST['target_waktu']);
+    $detail_json = !empty($_POST['detail_json']) ? "'" . $conn->real_escape_string($_POST['detail_json']) . "'" : "NULL";
     
-    $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi) 
-               VALUES (NOW(), 'barang', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val)";
+    $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi, detail_json) 
+               VALUES (NOW(), 'barang', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val, $detail_json)";
     get_query($conn, $sqlIns);
     
     $msgRiwayat = "Riwayat peramalan berhasil disimpan!";
@@ -267,14 +275,16 @@ if ($hitung) {
         }
         
         $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
-        $akurasi  = round(100 - $avg_mape, 1);
+        $akurasi  = round(max(0, 100 - $avg_mape), 1);
         
         if ($avg_mape <= 10) {
             $kualitas = "Sangat Baik";
-        } elseif ($avg_mape <= 25) {
+        } elseif ($avg_mape <= 20) {
             $kualitas = "Baik";
+        } elseif ($avg_mape <= 50) {
+            $kualitas = "Cukup / Wajar";
         } else {
-            $kualitas = "Cukup / Perlu Perhatian";
+            $kualitas = "Kurang / Tidak Akurat";
         }
     } else {
         $dataCukup = false;
@@ -534,9 +544,21 @@ if ($hitung) {
             </div>
             
             <div style="margin-bottom:20px;">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Interpretasi</div>
-                <div style="font-size:13px; line-height:1.5;">
-                    Diperkirakan total kebutuhan stok untuk <strong><?= htmlspecialchars($label_target_detail) ?></strong> sebanyak <strong><?= number_format($hasilPeramalan, 0, ',', '.') ?> unit</strong>. Akurasi model <?= max(0, $akurasi) ?>% (<?= $kualitas ?>).
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Evaluasi Model (MAPE &amp; Akurasi)</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;">
+                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Rata-rata MAPE</div>
+                        <div style="font-size:16px; font-weight:800; color:#ea580c; margin-top:2px;"><?= number_format($avg_mape, 2) ?>%</div>
+                        <div style="font-size:10px; color:var(--text-muted);">Tingkat Error</div>
+                    </div>
+                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;">
+                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Akurasi Model</div>
+                        <div style="font-size:16px; font-weight:800; color:var(--primary-color); margin-top:2px;"><?= max(0, $akurasi) ?>%</div>
+                        <div style="font-size:10px; color:var(--text-muted);"><?= $kualitas ?></div>
+                    </div>
+                </div>
+                <div style="font-size:12px; line-height:1.5; color:var(--text-muted);">
+                    Rata-rata kesalahan peramalan (MAPE) adalah <strong><?= number_format($avg_mape, 2) ?>%</strong>, sehingga tingkat akurasi peramalan mencapai <strong><?= max(0, $akurasi) ?>%</strong> (Kategori: <strong><?= $kualitas ?></strong>).
                 </div>
             </div>
 
@@ -580,8 +602,8 @@ if ($hitung) {
             </div>
             <?php endif; ?>
 
-            <button onclick="document.getElementById('detailPerhitungan').style.display = 'block'" class="btn btn-outline" style="width:100%; justify-content:center; font-size:13px; margin-bottom:12px;">
-                <i class="fa-solid fa-table-list" style="margin-right:6px;"></i> Detail Historis &amp; Perhitungan
+            <button type="button" onclick="document.getElementById('detailPerhitungan').style.display = 'block'; document.getElementById('detailPerhitungan').scrollIntoView({behavior:'smooth'});" class="btn btn-outline" style="width:100%; justify-content:center; font-size:13px; margin-bottom:12px;">
+                <i class="fa-solid fa-chart-line" style="margin-right:6px;"></i> Proyeksi Masa Depan &amp; Detail Perhitungan
             </button>
             
             <div style="display:flex; gap:12px;">
@@ -594,6 +616,32 @@ if ($hitung) {
                     <input type="hidden" name="hasil" value="<?= $hasilPeramalan ?>">
                     <input type="hidden" name="akurasi" value="<?= max(0, $akurasi) ?>">
                     <input type="hidden" name="target_waktu" value="<?= htmlspecialchars($label_target_detail) ?>">
+                    <?php
+                    $snapshotData = [
+                        'tipe' => 'barang',
+                        'referensi' => $kode_barang,
+                        'nama_referensi' => $nama_produk_terpilih ?: $kode_barang,
+                        'target_waktu' => $label_target_detail,
+                        'target_peramalan' => $target_peramalan,
+                        'jumlah_target' => $jumlah_target,
+                        'tanggal_acuan' => $tanggal_acuan,
+                        'periode' => $n_periode,
+                        'satuan_data' => $satuan_data,
+                        'satuan_waktu' => $satuan_waktu,
+                        'alpha' => $alpha,
+                        'hasil' => $hasilPeramalan,
+                        'avg_mape' => $avg_mape,
+                        'akurasi' => max(0, $akurasi),
+                        'kualitas' => $kualitas,
+                        'a_t' => isset($a[$n-1]) ? round($a[$n-1], 2) : 0,
+                        'b_t' => isset($b[$n-1]) ? round($b[$n-1], 2) : 0,
+                        'rentang_historis' => (!empty($rows) && $n > 0) ? ($rows[0]['label_rentang'] . ' s/d ' . $rows[$n-1]['label_rentang']) : '',
+                        'group_breakdown' => $group_breakdown,
+                        'forecast_breakdown' => $forecast_breakdown
+                    ];
+                    $jsonSnapshot = json_encode($snapshotData);
+                    ?>
+                    <input type="hidden" name="detail_json" value="<?= htmlspecialchars($jsonSnapshot, ENT_QUOTES, 'UTF-8') ?>">
                     <button type="submit" class="btn btn-primary" style="background:#22c55e; width:100%; justify-content:center; font-size:13px;">
                         <i class="fa-solid fa-save"></i> Simpan Riwayat
                     </button>
@@ -618,77 +666,47 @@ if ($hitung) {
 </div>
 
 <?php if ($hitung && isset($dataCukup) && $dataCukup): ?>
-<!-- ── TABEL DATA HISTORIS & DETAIL PERHITUNGAN (Hidden by default) ── -->
+<!-- ── TABEL PROYEKSI PERAMALAN MASA DEPAN & DATA HISTORIS (Hidden by default) ── -->
 <div id="detailPerhitungan" style="display:none; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
-    <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+    <!-- Header Utama -->
+    <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:#fcfcfc;">
         <div>
-            <h3 style="font-size:15px; font-weight:700; margin:0;">Data Historis <?= $satuan_data ?> &amp; Perhitungan DES (α = <?= $alpha ?>)</h3>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Brown's Double Exponential Smoothing — Target: <?= htmlspecialchars($label_target_detail) ?></div>
+            <h3 style="font-size:16px; font-weight:800; margin:0; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-forward" style="color:var(--primary-color);"></i>
+                Proyeksi Peramalan Masa Depan &amp; Detail Perhitungan DES
+            </h3>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                Brown's Double Exponential Smoothing (α = <?= $alpha ?>) &bull; Target: <strong><?= htmlspecialchars($label_target_detail) ?></strong>
+            </div>
         </div>
-        <button onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn"><i class="fa-solid fa-times"></i></button>
-    </div>
-    
-    <div class="table-responsive">
-        <table class="data-table" style="text-align:center;">
-            <thead>
-                <tr>
-                    <th><?= $satuan_data ?> Ke-</th>
-                    <th><?= ($target_peramalan === 'bulanan') ? 'Rentang Waktu (7 Hari)' : 'Tanggal' ?></th>
-                    <th>Aktual (X_t)</th>
-                    <th>S'_t</th>
-                    <th>S"_t</th>
-                    <th>a_t</th>
-                    <th>b_t</th>
-                    <th>Peramalan (F_t)</th>
-                    <th>MAPE (%)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php for ($i = 0; $i < $n; $i++):
-                    $fi_disp    = ($i == 0)   ? '—' : number_format($F[$i], 2);
-                    $mape_disp  = '—';
-                    if ($i > 0 && $aktual[$i] > 0) {
-                        $err = abs($aktual[$i] - $F[$i]);
-                        $mape_disp = number_format(($err / $aktual[$i]) * 100, 2);
-                    }
-                ?>
-                <tr>
-                    <td style="font-weight:600;"><?= $i + 1 ?></td>
-                    <td><?= $rows[$i]['label_rentang'] ?></td>
-                    <td style="font-weight:600;"><?= $aktual[$i] ?></td>
-                    <td><?= number_format($S1[$i], 2) ?></td>
-                    <td><?= number_format($S2[$i], 2) ?></td>
-                    <td><?= number_format($a[$i], 2) ?></td>
-                    <td><?= number_format($b[$i], 2) ?></td>
-                    <td style="color:var(--primary-color);"><?= $fi_disp ?></td>
-                    <td><?= $mape_disp ?></td>
-                </tr>
-                <?php endfor; ?>
-                <!-- Baris peramalan masa depan -->
-                <tr style="background:var(--primary-light); font-weight:700;">
-                    <td><?= $n + 1 ?></td>
-                    <td><?= htmlspecialchars($label_target_detail) ?></td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td style="color:var(--primary-color); font-size:15px;"><?= number_format($hasilPeramalan, 0, ',', '.') ?> Unit</td>
-                    <td>—</td>
-                </tr>
-            </tbody>
-        </table>
+        <button type="button" onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn" style="background:transparent; border:none; font-size:18px; cursor:pointer; color:var(--text-muted); padding:4px 8px;">
+            <i class="fa-solid fa-times"></i>
+        </button>
     </div>
 
-    <!-- Tabel Proyeksi Masa Depan Langkah ke-m -->
-    <div style="padding:16px 20px; background:#f8fafc; border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color);">
-        <h4 style="margin:0; font-size:13px; font-weight:700; color:var(--text-main);">
-            <i class="fa-solid fa-forward" style="color:var(--primary-color); margin-right:6px;"></i> Proyeksi Peramalan Masa Depan (<?= htmlspecialchars($label_target_detail) ?>)
-        </h4>
-        <p style="margin:4px 0 0 0; font-size:11px; color:var(--text-muted);">
-            Rumus DES Proyeksi Langkah ke-m: <code>F(t+m) = a_t + (m &times; b_t)</code> dengan a_t = <strong><?= number_format($a[$n-1], 2) ?></strong> dan b_t = <strong><?= number_format($b[$n-1], 2) ?></strong>
-        </p>
+    <!-- 1. BAGIAN UTAMA: PROYEKSI PERAMALAN MASA DEPAN (Langkah ke-m) -->
+    <div style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid var(--border-color);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h4 style="margin:0; font-size:14px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-chart-line" style="color:var(--primary-color);"></i>
+                    Proyeksi Kebutuhan Stok Masa Depan (<?= htmlspecialchars($label_target_detail) ?>)
+                </h4>
+                <p style="margin:4px 0 0 0; font-size:12px; color:var(--text-muted);">
+                    Rumus DES Proyeksi Langkah ke-m: <code>F(t+m) = a_t + (m &times; b_t)</code>
+                </p>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div style="background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px; font-size:12px;">
+                    <span style="color:var(--text-muted);">Level Terakhir (a_t):</span> <strong><?= number_format($a[$n-1], 2) ?></strong>
+                </div>
+                <div style="background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px; font-size:12px;">
+                    <span style="color:var(--text-muted);">Tren Terakhir (b_t):</span> <strong><?= number_format($b[$n-1], 2) ?></strong>
+                </div>
+            </div>
+        </div>
     </div>
+    
     <div class="table-responsive">
         <table class="data-table" style="text-align:center;">
             <thead>
@@ -708,18 +726,18 @@ if ($hitung) {
                     $grp_label = $satuan_waktu . ' ke-' . $fb['group_num'];
                 ?>
                 <tr>
-                    <td style="font-weight:600;">m = <?= $m_val ?></td>
-                    <td><?= $fb['label'] ?></td>
+                    <td style="font-weight:700; color:var(--primary-color);">m = <?= $m_val ?></td>
+                    <td style="font-weight:600;"><?= $fb['label'] ?></td>
                     <td><span style="font-size:11px; color:var(--text-muted); font-weight:600;"><?= $fb['rentang_m'] ?></span></td>
-                    <td><span class="badge" style="background:var(--bg-body); color:var(--text-main); font-size:11px; padding:2px 8px; border-radius:12px;"><?= $grp_label ?></span></td>
+                    <td><span class="badge" style="background:var(--bg-body); color:var(--text-main); font-size:11px; padding:3px 10px; border-radius:12px; border:1px solid var(--border-color);"><?= $grp_label ?></span></td>
                     <td style="font-family:monospace; font-size:12px;">
                         <?= number_format($a[$n-1], 2) ?> + (<?= $m_val ?> &times; <?= number_format($b[$n-1], 2) ?>) = <?= number_format($calc_val, 2) ?>
                     </td>
-                    <td style="font-weight:700; color:var(--primary-color); font-size:13px;"><?= $fb['prediksi'] ?></td>
+                    <td style="font-weight:800; color:var(--primary-color); font-size:14px;"><?= $fb['prediksi'] ?></td>
                 </tr>
                 <?php endforeach; ?>
-                <tr style="background:var(--primary-light); font-weight:800;">
-                    <td colspan="5" style="text-align:right; padding-right:16px; font-size:13px;">
+                <tr style="background:var(--primary-light); font-weight:800; border-top:2px solid var(--primary-color);">
+                    <td colspan="5" style="text-align:right; padding-right:16px; font-size:13px; color:var(--text-main);">
                         TOTAL ESTIMASI KEBUTUHAN STOK (<?= htmlspecialchars($label_target_detail) ?>):
                     </td>
                     <td style="color:var(--primary-color); font-size:16px;">
@@ -729,14 +747,111 @@ if ($hitung) {
             </tbody>
         </table>
     </div>
+
+    <!-- 2. DATA HISTORIS HARI/MINGGU & PERHITUNGAN DES SMOOTHING (Dipindahkan ke bawah proyeksi) -->
+    <div style="padding:16px 20px; background:#f8fafc; border-top:2px solid var(--border-color); border-bottom:1px solid var(--border-color); margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h4 style="margin:0; font-size:14px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-clock-rotate-left" style="color:#64748b;"></i>
+                    Data Historis <?= $satuan_data ?> &amp; Audit Perhitungan DES (α = <?= $alpha ?>)
+                </h4>
+                <p style="margin:4px 0 0 0; font-size:12px; color:var(--text-muted);">
+                    Data penjualan aktual <?= $n ?> <?= strtolower($satuan_data) ?> historis sebagai dasar perhitungan parameter pemulusan ganda (Level a_t dan Tren b_t).
+                </p>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px;">
+                Akurasi Model: <strong style="color:var(--text-main);"><?= max(0, $akurasi) ?>%</strong> (<?= $kualitas ?>)
+            </div>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table" style="text-align:center;">
+            <thead>
+                <tr>
+                    <th><?= $satuan_data ?> Ke-</th>
+                    <th><?= ($target_peramalan === 'bulanan') ? 'Rentang Waktu (7 Hari)' : 'Tanggal' ?></th>
+                    <th>Aktual (X_t)</th>
+                    <th>S'_t</th>
+                    <th>S"_t</th>
+                    <th>a_t</th>
+                    <th>b_t</th>
+                    <th>Peramalan (F_t)</th>
+                    <th>Error Absolut (|e_t|)</th>
+                    <th>MAPE (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $total_abs_err = 0;
+                for ($i = 0; $i < $n; $i++):
+                    $fi_disp    = ($i == 0)   ? '—' : number_format($F[$i], 2);
+                    $err_disp   = '—';
+                    $mape_disp  = '—';
+                    if ($i > 0) {
+                        $err = abs($aktual[$i] - $F[$i]);
+                        $total_abs_err += $err;
+                        $err_disp = number_format($err, 2);
+                        if ($aktual[$i] > 0) {
+                            $mape_disp = number_format(($err / $aktual[$i]) * 100, 2) . '%';
+                        } else {
+                            $mape_disp = '<span style="color:var(--text-muted); font-size:11px;" title="Penjualan aktual 0, dilewati agar tidak terjadi division by zero">0%*</span>';
+                        }
+                    }
+                ?>
+                <tr>
+                    <td style="font-weight:600;"><?= $i + 1 ?></td>
+                    <td><?= $rows[$i]['label_rentang'] ?></td>
+                    <td style="font-weight:700;"><?= $aktual[$i] ?></td>
+                    <td><?= number_format($S1[$i], 2) ?></td>
+                    <td><?= number_format($S2[$i], 2) ?></td>
+                    <td style="font-weight:600;"><?= number_format($a[$i], 2) ?></td>
+                    <td style="font-weight:600;"><?= number_format($b[$i], 2) ?></td>
+                    <td style="color:var(--primary-color); font-weight:600;"><?= $fi_disp ?></td>
+                    <td style="font-weight:600;"><?= $err_disp ?></td>
+                    <td style="font-weight:600;"><?= $mape_disp ?></td>
+                </tr>
+                <?php endfor; ?>
+            </tbody>
+            <tfoot>
+                <tr style="background:#f8fafc; font-weight:700;">
+                    <td colspan="2" style="text-align:right; font-weight:700;">Total Evaluasi:</td>
+                    <td style="font-weight:700;"><?= array_sum($aktual) ?></td>
+                    <td colspan="5"></td>
+                    <td style="font-weight:700; color:var(--text-main); font-size:13px;"><?= number_format($total_abs_err, 2) ?><br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span></td>
+                    <td style="font-weight:800; color:#ea580c; font-size:13px;"><?= number_format($avg_mape, 2) ?>%<br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Rata-rata MAPE</span></td>
+                </tr>
+                <tr style="background:#f1f5f9; font-weight:700;">
+                    <td colspan="8" style="text-align:right; padding-right:16px;">
+                        <span style="color:var(--text-main); font-size:13px;">Tingkat Akurasi Model Historis (100% - MAPE):</span>
+                    </td>
+                    <td colspan="2" style="color:var(--primary-color); font-size:14px; text-align:center;">
+                        <strong><?= max(0, $akurasi) ?>%</strong> <span style="font-size:11px; font-weight:600; color:var(--text-muted);">(<?= $kualitas ?>)</span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <div style="padding:10px 16px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.6;">
+        <i class="fa-solid fa-circle-info" style="color:var(--primary-color); margin-right:4px;"></i>
+        <strong>Keterangan Rumus &amp; Evaluasi Model:</strong><br>
+        &bull; <strong>Error Absolut (|e_t|)</strong>: |Aktual (X_t) - Peramalan (F_t)|.<br>
+        &bull; <strong>MAPE per Periode</strong>: (|e_t| / X_t) &times; 100%. Periode ke-1 merupakan inisialisasi ($S'_0, S''_0$) sehingga evaluasi dimulai periode ke-2.<br>
+        &bull; <strong>Rata-rata MAPE</strong>: Rata-rata persentase kesalahan dari <?= $count_mape ?> periode uji yang memiliki transaksi penjualan.<br>
+        &bull; <strong>Akurasi Model</strong>: 100% - Rata-rata MAPE = <strong><?= max(0, $akurasi) ?>%</strong> (Standar Lewis: &le;10% Sangat Baik, 10-20% Baik, 20-50% Cukup/Wajar, &gt;50% Kurang/Tidak Akurat).
+    </div>
 </div>
 <?php endif; ?>
 </div> <!-- Close peramalan-print-area -->
 
 <!-- RIWAYAT PERAMALAN -->
-<div style="background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; margin-bottom:24px;">
-    <div style="padding:20px; border-bottom:1px solid var(--border-color);">
-        <h3 style="font-size:15px; font-weight:700;">Riwayat Peramalan Barang</h3>
+<div class="no-print" style="background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; margin-bottom:24px;">
+    <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h3 style="font-size:15px; font-weight:700; margin:0;">Riwayat Peramalan Barang</h3>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Daftar peramalan yang telah disimpan beserta laporan rinciannya.</div>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="data-table">
@@ -750,27 +865,38 @@ if ($hitung) {
                     <th>Alpha</th>
                     <th>Hasil Peramalan</th>
                     <th>Akurasi</th>
+                    <th style="text-align:center;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
-                $qHist = get_query($conn, "SELECT * FROM tbl_riwayat_peramalan WHERE tipe='barang' ORDER BY id_riwayat DESC LIMIT 20");
-                if($qHist->num_rows > 0):
+                $riwayatDataStore = [];
+                $qHist = get_query($conn, "SELECT * FROM tbl_riwayat_peramalan WHERE tipe='barang' ORDER BY id_riwayat DESC LIMIT 30");
+                if($qHist && $qHist->num_rows > 0):
                     while($rh = $qHist->fetch_assoc()):
+                        $riwayatDataStore[$rh['id_riwayat']] = $rh;
                 ?>
                 <tr>
                     <td><?= date('d/m/Y H:i', strtotime($rh['tanggal_hitung'])) ?></td>
-                    <td><strong><?= $rh['referensi'] ?></strong></td>
-                    <td><?= $rh['nama_referensi'] ?></td>
-                    <td><span style="font-weight:600; color:var(--text-main);"><?= $rh['target_waktu'] ?></span></td>
+                    <td><strong><?= htmlspecialchars($rh['referensi']) ?></strong></td>
+                    <td><?= htmlspecialchars($rh['nama_referensi']) ?></td>
+                    <td><span style="font-weight:600; color:var(--text-main);"><?= htmlspecialchars($rh['target_waktu']) ?></span></td>
                     <td><?= $rh['periode'] ?> <?= strpos($rh['target_waktu'], 'Minggu') !== false ? 'Hari' : 'Minggu' ?></td>
                     <td><?= $rh['alpha'] ?></td>
                     <td style="color:var(--primary-color); font-weight:bold;"><?= number_format($rh['hasil'],0,',','.') ?> Unit</td>
                     <td><?= $rh['akurasi'] ?>%</td>
+                    <td style="white-space:nowrap; text-align:center;">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="bukaModalDetailRiwayat(<?= $rh['id_riwayat'] ?>)" style="padding:4px 10px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px;">
+                            <i class="fa-solid fa-eye" style="color:var(--primary-color);"></i> Detail
+                        </button>
+                        <a href="?page=des&action=hapus_riwayat&id_riwayat=<?= $rh['id_riwayat'] ?>" onclick="return confirm('Apakah Anda yakin ingin menghapus riwayat peramalan ini?')" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:12px; border-radius:6px; color:#ef4444; border-color:#fee2e2;" title="Hapus Riwayat">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </a>
+                    </td>
                 </tr>
                 <?php endwhile; else: ?>
                 <tr>
-                    <td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan barang.</td>
+                    <td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan barang.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>
@@ -778,7 +904,365 @@ if ($hitung) {
     </div>
 </div>
 
+<!-- Modal Detail Riwayat Peramalan -->
+<div id="modalDetailRiwayat" class="no-print" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#fff; border-radius:16px; width:100%; max-width:800px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; animation: fadeIn 0.2s ease-out;">
+        
+        <!-- Modal Header -->
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:#fafafa;">
+            <div>
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-file-waveform" style="color:var(--primary-color);"></i>
+                    Laporan Detail Riwayat Peramalan
+                </h3>
+                <div id="mdr_subtitle" style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                    Riwayat # &bull; Waktu Hitung: -
+                </div>
+            </div>
+            <button type="button" onclick="tutupModalDetailRiwayat()" style="background:transparent; border:none; font-size:18px; color:var(--text-muted); cursor:pointer; padding:4px 8px; border-radius:6px;">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div style="padding:24px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:20px;">
+            
+            <!-- Grid Ringkasan Atas -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+                <div style="background:var(--bg-body); border:1px solid var(--border-color); border-radius:12px; padding:14px;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Objek Peramalan</div>
+                    <div id="mdr_objek" style="font-size:14px; font-weight:800; color:var(--text-main); margin-top:4px;">-</div>
+                    <div id="mdr_kode" style="font-size:11px; color:var(--text-muted); margin-top:2px;">-</div>
+                </div>
+                <div style="background:var(--bg-body); border:1px solid var(--border-color); border-radius:12px; padding:14px;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Target Proyeksi</div>
+                    <div id="mdr_target" style="font-size:14px; font-weight:800; color:var(--text-main); margin-top:4px;">-</div>
+                    <div id="mdr_rentang_histori" style="font-size:11px; color:var(--text-muted); margin-top:2px;">-</div>
+                </div>
+                <div style="background:var(--primary-light); border:1px solid rgba(var(--primary-rgb),0.2); border-radius:12px; padding:14px;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Prediksi Total Stok</div>
+                    <div id="mdr_hasil" style="font-size:20px; font-weight:900; color:var(--primary-color); margin-top:2px;">-</div>
+                    <div id="mdr_akurasi" style="font-size:11px; color:var(--text-main); font-weight:600; margin-top:2px;">-</div>
+                </div>
+            </div>
+
+            <!-- Detail Parameter DES -->
+            <div style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:16px;">
+                <div style="font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-sliders" style="color:var(--primary-color);"></i>
+                    Parameter Model Brown's Double Exponential Smoothing
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; text-align:center;">
+                    <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
+                        <div style="font-size:10px; color:var(--text-muted);">Alpha (α)</div>
+                        <div id="mdr_alpha" style="font-size:14px; font-weight:700; color:var(--text-main); margin-top:2px;">-</div>
+                    </div>
+                    <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
+                        <div style="font-size:10px; color:var(--text-muted);">Periode Historis</div>
+                        <div id="mdr_periode" style="font-size:14px; font-weight:700; color:var(--text-main); margin-top:2px;">-</div>
+                    </div>
+                    <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
+                        <div style="font-size:10px; color:var(--text-muted);">Level Terakhir (a_t)</div>
+                        <div id="mdr_at" style="font-size:14px; font-weight:700; color:var(--text-main); margin-top:2px;">-</div>
+                    </div>
+                    <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
+                        <div style="font-size:10px; color:var(--text-muted);">Tren Terakhir (b_t)</div>
+                        <div id="mdr_bt" style="font-size:14px; font-weight:700; color:var(--text-main); margin-top:2px;">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Container Rincian Proyeksi Langkah ke-m -->
+            <div id="mdr_breakdown_container" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; overflow:hidden;">
+                <div style="padding:12px 16px; background:#f8fafc; border-bottom:1px solid var(--border-color); font-size:12px; font-weight:700; color:var(--text-main); display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fa-solid fa-list-check" style="color:var(--primary-color); margin-right:6px;"></i> Rincian Proyeksi Peramalan Langkah ke-m:</span>
+                    <span style="font-family:monospace; font-size:11px; color:var(--text-muted); font-weight:normal;">F(t+m) = a_t + (m &times; b_t)</span>
+                </div>
+                <div class="table-responsive" style="max-height:220px; overflow-y:auto;">
+                    <table class="data-table" style="text-align:center; font-size:12px; margin:0;">
+                        <thead>
+                            <tr style="background:#f1f5f9;">
+                                <th>Langkah (m)</th>
+                                <th>Periode</th>
+                                <th>Rentang</th>
+                                <th>Kelompok</th>
+                                <th>Hitungan DES</th>
+                                <th>Prediksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mdr_breakdown_tbody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Group Breakdown Cards (jika ada sub kelompok minggu/bulan) -->
+            <div id="mdr_groups_container" style="display:none;">
+                <div style="font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:8px;">
+                    <i class="fa-solid fa-layer-group" style="color:var(--primary-color); margin-right:4px;"></i> Ringkasan Sub-Periode:
+                </div>
+                <div id="mdr_groups_list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:8px;">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div style="padding:16px 24px; border-top:1px solid var(--border-color); background:#fafafa; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="font-size:11px; color:var(--text-muted);">
+                Data tersimpan di basis data riwayat peramalan toko.
+            </div>
+            <div style="display:flex; gap:10px;">
+                <a id="mdr_btn_muat" href="#" class="btn btn-primary" style="background:#111; color:#fff; font-size:12px; padding:8px 16px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+                    <i class="fa-solid fa-calculator"></i> Buka di Kalkulator
+                </a>
+                <button type="button" onclick="cetakModalRiwayat()" class="btn btn-outline" style="font-size:12px; padding:8px 14px; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-print"></i> Cetak Dokumen
+                </button>
+                <button type="button" onclick="tutupModalDetailRiwayat()" class="btn btn-outline" style="font-size:12px; padding:8px 14px; border-radius:8px;">
+                    Tutup
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <script>
+const riwayatDataStore = <?= json_encode($riwayatDataStore, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+function bukaModalDetailRiwayat(id) {
+    const data = riwayatDataStore[id];
+    if (!data) return;
+    window.currentDetailRiwayat = data;
+    
+    let detail = null;
+    try {
+        if (data.detail_json) {
+            detail = typeof data.detail_json === 'string' ? JSON.parse(data.detail_json) : data.detail_json;
+        }
+    } catch(e) {
+        console.error("JSON parse error:", e);
+    }
+    
+    document.getElementById('mdr_subtitle').innerHTML = `Riwayat #${data.id_riwayat} &bull; Waktu Hitung: <strong>${data.tanggal_hitung}</strong>`;
+    document.getElementById('mdr_objek').textContent = data.nama_referensi;
+    document.getElementById('mdr_kode').textContent = 'Kode Barang: ' + data.referensi;
+    document.getElementById('mdr_target').textContent = data.target_waktu;
+    
+    const rentangText = (detail && detail.rentang_historis) ? ('Data Historis: ' + detail.rentang_historis) : '';
+    document.getElementById('mdr_rentang_histori').textContent = rentangText;
+    
+    document.getElementById('mdr_hasil').innerHTML = Number(data.hasil).toLocaleString('id-ID') + ' <span style="font-size:13px; font-weight:600; color:var(--text-main);">Unit</span>';
+    const kualitasText = (detail && detail.kualitas) ? ` (${detail.kualitas})` : '';
+    const mapeText = (detail && detail.avg_mape !== undefined) ? `MAPE: ${detail.avg_mape}% &bull; ` : '';
+    document.getElementById('mdr_akurasi').innerHTML = mapeText + 'Akurasi: ' + data.akurasi + '%' + kualitasText;
+    
+    document.getElementById('mdr_alpha').textContent = data.alpha;
+    const satuanD = (detail && detail.satuan_data) ? detail.satuan_data : (data.target_waktu.indexOf('Minggu') !== -1 ? 'Hari' : 'Minggu');
+    document.getElementById('mdr_periode').textContent = data.periode + ' ' + satuanD;
+    
+    document.getElementById('mdr_at').textContent = (detail && detail.a_t !== undefined) ? detail.a_t : '—';
+    document.getElementById('mdr_bt').textContent = (detail && detail.b_t !== undefined) ? detail.b_t : '—';
+    
+    // Breakdown langkah
+    const tbody = document.getElementById('mdr_breakdown_tbody');
+    tbody.innerHTML = '';
+    
+    if (detail && detail.forecast_breakdown && detail.forecast_breakdown.length > 0) {
+        const satW = detail.satuan_waktu || 'Minggu';
+        const atVal = parseFloat(detail.a_t) || 0;
+        const btVal = parseFloat(detail.b_t) || 0;
+        
+        detail.forecast_breakdown.forEach(fb => {
+            const m = fb.m;
+            const calc = (atVal + (m * btVal)).toFixed(2);
+            const grp = satW + ' ke-' + (fb.group_num || 1);
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:700; color:var(--primary-color);">m = ${m}</td>
+                <td style="font-weight:600;">${fb.label}</td>
+                <td><span style="font-size:11px; color:var(--text-muted); font-weight:600;">${fb.rentang_m || '-'}</span></td>
+                <td><span class="badge" style="background:var(--bg-body); color:var(--text-main); font-size:11px; padding:2px 8px; border-radius:12px; border:1px solid var(--border-color);">${grp}</span></td>
+                <td style="font-family:monospace; font-size:11px;">${atVal} + (${m} &times; ${btVal}) = ${calc}</td>
+                <td style="font-weight:700; color:var(--primary-color);">${fb.prediksi}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('mdr_breakdown_container').style.display = 'block';
+    } else {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td colspan="6" style="padding:16px; color:var(--text-muted); font-size:12px;">
+                Ringkasan total hasil peramalan: <strong>${Number(data.hasil).toLocaleString('id-ID')} Unit</strong> dengan tingkat akurasi <strong>${data.akurasi}%</strong>.<br>
+                Gunakan tombol <em>Buka di Kalkulator</em> di bawah untuk menjalankan simulasi lengkap secara langsung.
+            </td>
+        `;
+        tbody.appendChild(tr);
+        document.getElementById('mdr_breakdown_container').style.display = 'block';
+    }
+    
+    // Group breakdown cards
+    const grpContainer = document.getElementById('mdr_groups_container');
+    const grpList = document.getElementById('mdr_groups_list');
+    grpList.innerHTML = '';
+    if (detail && detail.group_breakdown && detail.group_breakdown.length > 1) {
+        detail.group_breakdown.forEach(gb => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;';
+            card.innerHTML = `
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:var(--text-main);">${gb.label}</div>
+                    <div style="font-size:10px; color:var(--text-muted);">${gb.sublabel || ''}</div>
+                </div>
+                <div style="font-size:13px; font-weight:700; color:var(--primary-color);">
+                    ${Number(gb.total_qty).toLocaleString('id-ID')} <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Unit</span>
+                </div>
+            `;
+            grpList.appendChild(card);
+        });
+        grpContainer.style.display = 'block';
+    } else {
+        grpContainer.style.display = 'none';
+    }
+    
+    // Tombol muat ke kalkulator
+    const targetType = (detail && detail.target_peramalan) ? detail.target_peramalan : (data.target_waktu.indexOf('Bulan') !== -1 ? 'bulanan' : 'mingguan');
+    const jumlahT = (detail && detail.jumlah_target) ? detail.jumlah_target : 1;
+    const tglA = (detail && detail.tanggal_acuan) ? detail.tanggal_acuan : '';
+    let urlMuat = `index.php?page=des&kode_barang=${encodeURIComponent(data.referensi)}&target_peramalan=${targetType}&jumlah_target=${jumlahT}&n_periode=${data.periode}&alpha=${data.alpha}`;
+    if (tglA) {
+        urlMuat += `&tanggal_acuan=${encodeURIComponent(tglA)}`;
+    }
+    document.getElementById('mdr_btn_muat').href = urlMuat;
+    
+    const modal = document.getElementById('modalDetailRiwayat');
+    modal.style.display = 'flex';
+}
+
+function tutupModalDetailRiwayat() {
+    document.getElementById('modalDetailRiwayat').style.display = 'none';
+}
+
+function cetakModalRiwayat() {
+    const data = window.currentDetailRiwayat;
+    if (!data) return;
+    let detail = null;
+    try {
+        if (data.detail_json) {
+            detail = typeof data.detail_json === 'string' ? JSON.parse(data.detail_json) : data.detail_json;
+        }
+    } catch(e) {}
+    
+    const printWin = window.open('', '_blank', 'width=900,height=700');
+    if (!printWin) {
+        alert('Izinkan pop-up peramban untuk mencetak laporan riwayat.');
+        return;
+    }
+    
+    let rowsHtml = '';
+    if (detail && detail.forecast_breakdown && detail.forecast_breakdown.length > 0) {
+        const satW = detail.satuan_waktu || 'Minggu';
+        const atVal = parseFloat(detail.a_t) || 0;
+        const btVal = parseFloat(detail.b_t) || 0;
+        detail.forecast_breakdown.forEach(fb => {
+            const m = fb.m;
+            const calc = (atVal + (m * btVal)).toFixed(2);
+            rowsHtml += `<tr>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">m = ${m}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${fb.label}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${fb.rentang_m || '-'}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; font-family:monospace; text-align:center;">${atVal} + (${m} &times; ${btVal}) = ${calc}</td>
+                <td style="padding:6px; border:1px solid #cbd5e1; font-weight:bold; text-align:center; color:#0284c7;">${fb.prediksi} Unit</td>
+            </tr>`;
+        });
+    } else {
+        rowsHtml = `<tr>
+            <td colspan="5" style="padding:16px; border:1px solid #cbd5e1; text-align:center; font-weight:bold;">
+                Total Prediksi Kebutuhan Stok: ${Number(data.hasil).toLocaleString('id-ID')} Unit
+            </td>
+        </tr>`;
+    }
+    
+    const html = `<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Laporan Riwayat Peramalan #${data.id_riwayat}</title>
+        <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; }
+            table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+            th { background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px; font-weight: 700; text-align: center; }
+            .kop { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; }
+            @media print {
+                body { padding: 0; }
+                @page { margin: 15mm; size: auto; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="kop">
+            <div>
+                <h2 style="margin:0; font-size:20px; font-weight:900; letter-spacing:1px;">A STORE</h2>
+                <div style="font-size:12px; color:#475569; margin-top:3px;">Laporan Riwayat Hasil Peramalan Stok — Double Exponential Smoothing</div>
+            </div>
+            <div style="text-align:right; font-size:11px; color:#64748b;">
+                ID Riwayat: <strong>#${data.id_riwayat}</strong><br>
+                Tanggal Hitung: <strong>${data.tanggal_hitung}</strong>
+            </div>
+        </div>
+
+        <div class="grid-info">
+            <div><strong>Objek Analisis:</strong> ${data.referensi} — ${data.nama_referensi}</div>
+            <div><strong>Target Proyeksi:</strong> ${data.target_waktu}</div>
+            <div><strong>Parameter Model:</strong> Alpha (α) = ${data.alpha} | Periode = ${data.periode}</div>
+            <div><strong>Hasil &amp; Akurasi:</strong> <span style="font-size:14px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '% &bull; ' : ''}Akurasi: ${data.akurasi}%${detail && detail.kualitas ? ' - ' + detail.kualitas : ''})</div>
+        </div>
+
+        <h4 style="margin:20px 0 6px 0; font-size:13px; font-weight:700;">Rincian Proyeksi Peramalan Masa Depan (Brown's DES):</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Langkah (m)</th>
+                    <th>Periode Target</th>
+                    <th>Rentang Waktu</th>
+                    <th>Rumus: a_t + (m &times; b_t)</th>
+                    <th>Estimasi Kebutuhan</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHtml}
+                <tr style="background:#f1f5f9; font-weight:bold;">
+                    <td colspan="4" style="text-align:right; padding:8px 12px; border:1px solid #cbd5e1;">TOTAL ESTIMASI KEBUTUHAN STOK:</td>
+                    <td style="text-align:center; padding:8px; border:1px solid #cbd5e1; font-size:14px; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top:35px; display:flex; justify-content:space-between; font-size:12px;">
+            <div style="color:#64748b;">Dicetak dari Sistem Manajemen Inventori A STORE</div>
+            <div style="text-align:center; width:200px;">
+                <div>Mengetahui,</div>
+                <div style="margin-top:55px; font-weight:bold; border-bottom:1px solid #000; padding-bottom:2px;">Pimpinan Toko</div>
+            </div>
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+            };
+        <\/script>
+    </body>
+    </html>`;
+    
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+}
+
 const presetsMingguan = [
     { val: 1, label: '1 Minggu Kedepan (7 Hari)' },
     { val: 2, label: '2 Minggu Kedepan (14 Hari)' },
