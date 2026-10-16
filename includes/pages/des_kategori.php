@@ -696,7 +696,18 @@ if ($hitung) {
 
 <?php if ($hitung && isset($dataCukup) && $dataCukup): ?>
 <!-- ── TABEL PROYEKSI PERAMALAN MASA DEPAN & DATA HISTORIS (Hidden by default) ── -->
-<div id="detailPerhitungan" style="display:<?= (isset($_GET['show_detail']) && $_GET['show_detail'] == '1') ? 'block' : 'none' ?>; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px;">
+<div id="detailPerhitungan" style="display:<?= (isset($_GET['show_detail']) && $_GET['show_detail'] == '1') ? 'block' : 'none' ?>; background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; animation: fadeIn 0.3s; margin-bottom:24px; box-shadow:0 4px 12px rgba(0,0,0,0.04);">
+    <?php if (isset($_GET['show_detail']) && $_GET['show_detail'] == '1'): ?>
+    <div style="padding:12px 20px; background:#eff6ff; border-bottom:1px solid #bfdbfe; color:#1e40af; font-size:13px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px; font-weight:600;">
+            <i class="fa-solid fa-circle-check" style="color:#2563eb; font-size:16px;"></i>
+            <span>Mode Tampilan Penuh (Bukan Modal): Rincian proyeksi langkah ke-m dan audit data historis disajikan terbuka penuh tanpa batasan scroll popup.</span>
+        </div>
+        <a href="#tabelRiwayat" class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 10px; border-color:#93c5fd; background:#fff; text-decoration:none; color:#1d4ed8; border-radius:6px;">
+            <i class="fa-solid fa-clock-rotate-left"></i> Riwayat Peramalan
+        </a>
+    </div>
+    <?php endif; ?>
     <!-- Header Utama -->
     <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:#fcfcfc;">
         <div>
@@ -708,7 +719,7 @@ if ($hitung) {
                 Brown's Double Exponential Smoothing (α = <?= $alpha ?>) &bull; Target: <strong><?= htmlspecialchars($label_target_detail) ?></strong>
             </div>
         </div>
-        <button type="button" onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn" style="background:transparent; border:none; font-size:18px; cursor:pointer; color:var(--text-muted); padding:4px 8px;">
+        <button type="button" onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn" style="background:transparent; border:none; font-size:18px; cursor:pointer; color:var(--text-muted); padding:4px 8px;" title="Tutup Detail">
             <i class="fa-solid fa-times"></i>
         </button>
     </div>
@@ -875,7 +886,7 @@ if ($hitung) {
 </div> <!-- Close peramalan-print-area -->
 
 <!-- RIWAYAT PERAMALAN -->
-<div class="no-print" style="background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; margin-bottom:24px;">
+<div id="tabelRiwayat" class="no-print" style="background:#fff; border:1px solid var(--border-color); border-radius:16px; overflow:hidden; margin-bottom:24px;">
     <div style="padding:20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
         <div>
             <h3 style="font-size:15px; font-weight:700; margin:0;">Riwayat Peramalan Kategori</h3>
@@ -914,9 +925,22 @@ if ($hitung) {
                     <td><?= $rh['alpha'] ?></td>
                     <td style="color:var(--primary-color); font-weight:bold;"><?= number_format($rh['hasil'],0,',','.') ?> Unit</td>
                     <td><?= $rh['akurasi'] ?>%</td>
+                    <?php
+                    $detRow = !empty($rh['detail_json']) ? json_decode($rh['detail_json'], true) : [];
+                    $targetTypeRow = $detRow['target_peramalan'] ?? (strpos($rh['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
+                    $jumlahTRow = $detRow['jumlah_target'] ?? 1;
+                    $tglARow = $detRow['tanggal_acuan'] ?? '';
+                    $linkKalkulator = "?page=des_kategori&id_kategori=" . urlencode($rh['referensi']) . "&target_peramalan=" . urlencode($targetTypeRow) . "&jumlah_target=" . urlencode($jumlahTRow) . "&n_periode=" . urlencode($rh['periode']) . "&alpha=" . urlencode($rh['alpha']) . "&show_detail=1";
+                    if ($tglARow) {
+                        $linkKalkulator .= "&tanggal_acuan=" . urlencode($tglARow);
+                    }
+                    ?>
                     <td style="white-space:nowrap; text-align:center;">
-                        <button type="button" class="btn btn-outline btn-sm" onclick="bukaModalDetailRiwayat(<?= $rh['id_riwayat'] ?>)" style="padding:4px 10px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px;">
-                            <i class="fa-solid fa-eye" style="color:var(--primary-color);"></i> Detail
+                        <a href="<?= $linkKalkulator ?>" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px; text-decoration:none; background:#111; color:#fff;" title="Buka Detail Perhitungan Penuh di Halaman (Bukan Modal)">
+                            <i class="fa-solid fa-calculator"></i> Buka Detail
+                        </a>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="bukaModalDetailRiwayat(<?= $rh['id_riwayat'] ?>)" style="padding:4px 8px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px;" title="Lihat Ringkasan Modal">
+                            <i class="fa-solid fa-eye" style="color:var(--primary-color);"></i>
                         </button>
                         <a href="?page=des_kategori&action=hapus_riwayat&id_riwayat=<?= $rh['id_riwayat'] ?>" onclick="return confirm('Apakah Anda yakin ingin menghapus riwayat peramalan ini?')" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:12px; border-radius:6px; color:#ef4444; border-color:#fee2e2;" title="Hapus Riwayat">
                             <i class="fa-solid fa-trash-can"></i>
@@ -948,9 +972,14 @@ if ($hitung) {
                     Riwayat # &bull; Waktu Hitung: -
                 </div>
             </div>
-            <button type="button" onclick="tutupModalDetailRiwayat()" style="background:transparent; border:none; font-size:18px; color:var(--text-muted); cursor:pointer; padding:4px 8px; border-radius:6px;">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <a id="mdr_btn_header_full" href="#" class="btn btn-primary btn-sm" style="background:#111; color:#fff; font-size:12px; padding:6px 14px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="Buka Detail Perhitungan Penuh di Halaman (Bukan Modal)">
+                    <i class="fa-solid fa-expand"></i> Buka Layar Penuh
+                </a>
+                <button type="button" onclick="tutupModalDetailRiwayat()" style="background:transparent; border:none; font-size:18px; color:var(--text-muted); cursor:pointer; padding:4px 8px; border-radius:6px;">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Modal Body (Scrollable) -->
@@ -983,7 +1012,7 @@ if ($hitung) {
                 </div>
                 <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; text-align:center;">
                     <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
-                        <div style="font-size:10px; color:var(--text-muted);">Alpha (α)</div>
+                        <div style="font-size:10px; color:var(--text-muted);">Alpha (&alpha;)</div>
                         <div id="mdr_alpha" style="font-size:14px; font-weight:700; color:var(--text-main); margin-top:2px;">-</div>
                     </div>
                     <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
@@ -1014,7 +1043,7 @@ if ($hitung) {
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
+                <div class="table-responsive" style="overflow-x:auto;">
                     <table class="data-table" style="text-align:center; font-size:12px; margin:0;">
                         <thead>
                             <tr style="background:#f1f5f9;">
@@ -1049,7 +1078,7 @@ if ($hitung) {
                     <span><i class="fa-solid fa-list-check" style="color:var(--primary-color); margin-right:6px;"></i> Rincian Proyeksi Peramalan Langkah ke-m:</span>
                     <span style="font-family:monospace; font-size:11px; color:var(--text-muted); font-weight:normal;">F(t+m) = a_t + (m &times; b_t)</span>
                 </div>
-                <div class="table-responsive" style="max-height:220px; overflow-y:auto;">
+                <div class="table-responsive" style="overflow-x:auto;">
                     <table class="data-table" style="text-align:center; font-size:12px; margin:0;">
                         <thead>
                             <tr style="background:#f1f5f9;">
@@ -1086,8 +1115,8 @@ if ($hitung) {
                 Data tersimpan di basis data riwayat peramalan toko.
             </div>
             <div style="display:flex; gap:10px;">
-                <a id="mdr_btn_muat" href="#" class="btn btn-primary" style="background:#111; color:#fff; font-size:12px; padding:8px 16px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
-                    <i class="fa-solid fa-calculator"></i> Buka di Kalkulator
+                <a id="mdr_btn_muat" href="#" class="btn btn-primary" style="background:#111; color:#fff; font-size:12px; padding:9px 18px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" title="Buka Detail Perhitungan Penuh di Halaman (Bukan Modal)">
+                    <i class="fa-solid fa-calculator"></i> Buka di Kalkulator (Tampilan Penuh)
                 </a>
                 <button type="button" onclick="cetakModalRiwayat()" class="btn btn-outline" style="font-size:12px; padding:8px 14px; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
                     <i class="fa-solid fa-print"></i> Cetak Dokumen
@@ -1300,6 +1329,8 @@ function bukaModalDetailRiwayat(id) {
         urlMuat += `&tanggal_acuan=${encodeURIComponent(tglA)}`;
     }
     document.getElementById('mdr_btn_muat').href = urlMuat;
+    const btnHeaderFull = document.getElementById('mdr_btn_header_full');
+    if (btnHeaderFull) btnHeaderFull.href = urlMuat;
     
     const modal = document.getElementById('modalDetailRiwayat');
     modal.style.display = 'flex';
@@ -1501,7 +1532,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const dp = document.getElementById('detailPerhitungan');
         if (dp) {
             dp.style.display = 'block';
-            setTimeout(() => { dp.scrollIntoView({ behavior: 'smooth' }); }, 150);
+            setTimeout(() => {
+                const yOffset = -70;
+                const y = dp.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }, 150);
         }
     }
 });
