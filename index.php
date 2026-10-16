@@ -23,11 +23,15 @@ if ($checkFotoProfil && $checkFotoProfil->num_rows == 0) {
     $conn->query("ALTER TABLE tbl_users ADD COLUMN foto_profil VARCHAR(255) DEFAULT NULL AFTER nama_lengkap");
 }
 
-// Auto-migrate detail_json di tbl_riwayat_peramalan
+// Auto-migrate detail_json dan mape di tbl_riwayat_peramalan
 try {
     $checkDetailJson = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'detail_json'");
     if ($checkDetailJson && $checkDetailJson->num_rows == 0) {
         $conn->query("ALTER TABLE tbl_riwayat_peramalan ADD COLUMN detail_json LONGTEXT DEFAULT NULL");
+    }
+    $checkMapeCol = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'mape'");
+    if ($checkMapeCol && $checkMapeCol->num_rows == 0) {
+        $conn->query("ALTER TABLE tbl_riwayat_peramalan ADD COLUMN mape FLOAT DEFAULT NULL AFTER akurasi");
     }
 } catch (Exception $e) {}
 

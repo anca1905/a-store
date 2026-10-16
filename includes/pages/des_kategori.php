@@ -13,11 +13,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $alpha_val = (float)$_POST['alpha'];
     $hasil = (int)$_POST['hasil'];
     $akurasi_val = (float)$_POST['akurasi'];
+    $mape_val = isset($_POST['mape']) ? (float)$_POST['mape'] : round(max(0, 100 - $akurasi_val), 2);
     $target = $conn->real_escape_string($_POST['target_waktu']);
     $detail_json = !empty($_POST['detail_json']) ? "'" . $conn->real_escape_string($_POST['detail_json']) . "'" : "NULL";
     
-    $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi, detail_json) 
-               VALUES (NOW(), 'kategori', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val, $detail_json)";
+    $checkMapeCol = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'mape'");
+    if ($checkMapeCol && $checkMapeCol->num_rows > 0) {
+        $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi, mape, detail_json) 
+                   VALUES (NOW(), 'kategori', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val, $mape_val, $detail_json)";
+    } else {
+        $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi, detail_json) 
+                   VALUES (NOW(), 'kategori', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val, $detail_json)";
+    }
     get_query($conn, $sqlIns);
     
     $msgRiwayat = "Riwayat peramalan berhasil disimpan!";
@@ -617,6 +624,7 @@ if ($hitung) {
                     <input type="hidden" name="alpha" value="<?= $alpha ?>">
                     <input type="hidden" name="hasil" value="<?= $hasilPeramalan ?>">
                     <input type="hidden" name="akurasi" value="<?= max(0, $akurasi) ?>">
+                    <input type="hidden" name="mape" value="<?= round($avg_mape, 2) ?>">
                     <input type="hidden" name="target_waktu" value="<?= htmlspecialchars($label_target_detail) ?>">
                     <?php
                     $history_rows = [];
@@ -904,6 +912,7 @@ if ($hitung) {
                     <th>Periode</th>
                     <th>Alpha</th>
                     <th>Hasil Peramalan</th>
+                    <th>MAPE</th>
                     <th>Akurasi</th>
                     <th style="text-align:center;">Aksi</th>
                 </tr>
@@ -924,7 +933,6 @@ if ($hitung) {
                     <td><?= $rh['periode'] ?> <?= strpos($rh['target_waktu'], 'Minggu') !== false ? 'Hari' : 'Minggu' ?></td>
                     <td><?= $rh['alpha'] ?></td>
                     <td style="color:var(--primary-color); font-weight:bold;"><?= number_format($rh['hasil'],0,',','.') ?> Unit</td>
-                    <td><?= $rh['akurasi'] ?>%</td>
                     <?php
                     $detRow = !empty($rh['detail_json']) ? json_decode($rh['detail_json'], true) : [];
                     $targetTypeRow = $detRow['target_peramalan'] ?? (strpos($rh['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
@@ -934,7 +942,20 @@ if ($hitung) {
                     if ($tglARow) {
                         $linkKalkulator .= "&tanggal_acuan=" . urlencode($tglARow);
                     }
+                    
+                    if (isset($rh['mape']) && $rh['mape'] !== null && $rh['mape'] !== '') {
+                        $mapeFormatted = number_format((float)$rh['mape'], 1) . '%';
+                    } elseif (isset($detRow['avg_mape']) && $detRow['avg_mape'] !== null && $detRow['avg_mape'] !== '') {
+                        $mapeFormatted = number_format((float)$detRow['avg_mape'], 1) . '%';
+                    } elseif (isset($rh['akurasi'])) {
+                        $calcMape = max(0, 100 - (float)$rh['akurasi']);
+                        $mapeFormatted = number_format($calcMape, 1) . '%';
+                    } else {
+                        $mapeFormatted = '-';
+                    }
                     ?>
+                    <td style="color:#ea580c; font-weight:700;"><?= $mapeFormatted ?></td>
+                    <td style="font-weight:600;"><?= $rh['akurasi'] ?>%</td>
                     <td style="white-space:nowrap; text-align:center;">
                         <a href="<?= $linkKalkulator ?>" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px; text-decoration:none; background:#111; color:#fff;" title="Buka Detail Perhitungan Penuh di Halaman (Bukan Modal)">
                             <i class="fa-solid fa-calculator"></i> Buka Detail
@@ -949,7 +970,7 @@ if ($hitung) {
                 </tr>
                 <?php endwhile; else: ?>
                 <tr>
-                    <td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan kategori.</td>
+                    <td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan kategori.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>
