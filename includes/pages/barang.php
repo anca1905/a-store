@@ -36,9 +36,15 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
                 </div>
                 <button type="submit" class="btn btn-outline" style="padding:9px 14px;">Cari</button>
             </form>
-            <button class="btn btn-primary" onclick="openModal('modalTambah')">
-                <i class="fa-solid fa-plus"></i> Tambah Barang
-            </button>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button type="button" class="btn btn-outline" id="btnToggleHargaBeli" onclick="toggleAllHargaBeli()" style="padding:9px 14px; display:inline-flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-eye" id="iconToggleHargaBeli"></i>
+                    <span id="labelToggleHargaBeli">Tampilkan Harga Beli</span>
+                </button>
+                <button class="btn btn-primary" onclick="openModal('modalTambah')">
+                    <i class="fa-solid fa-plus"></i> Tambah Barang
+                </button>
+            </div>
         </div>
 
         <!-- Tabel -->
@@ -49,7 +55,12 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
                         <th>No</th>
                         <th>Nama Barang</th>
                         <th>Kategori</th>
-                        <th>Harga Beli</th>
+                        <th>
+                            Harga Beli
+                            <button type="button" onclick="toggleAllHargaBeli()" title="Sembunyikan / Tampilkan Semua Harga Beli" style="background:none; border:none; cursor:pointer; color:inherit; opacity:0.6; margin-left:4px;">
+                                <i class="fa-solid fa-eye-slash" id="thIconHargaBeli"></i>
+                            </button>
+                        </th>
                         <th>Harga Jual</th>
                         <th>Stok</th>
                         <th>Aksi</th>
@@ -79,7 +90,12 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
                             </div>
                         </td>
                         <td><?= htmlspecialchars($row['kategori'] ?? '-') ?></td>
-                        <td>Rp <?= number_format($row['harga_beli'] ?? 0, 0, ',', '.') ?></td>
+                        <td>
+                            <span class="harga-beli-wrapper" data-real="Rp <?= number_format($row['harga_beli'] ?? 0, 0, ',', '.') ?>" onclick="toggleSingleHargaBeli(this)" title="Klik untuk mengintip / menyembunyikan nominal ini" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; user-select:none; padding:2px 6px; border-radius:4px; transition:background 0.2s;">
+                                <span class="harga-beli-text" style="letter-spacing:1px; font-weight:600; color:var(--text-muted);">••••••</span>
+                                <i class="fa-solid fa-eye-slash eye-mini" style="font-size:10px; opacity:0.4;"></i>
+                            </span>
+                        </td>
                         <td>Rp <?= number_format($row['harga_jual'] ?? 0, 0, ',', '.') ?></td>
                         <td><span class="status <?= $statusStok ?>"><?= $row['stok_aktual'] ?></span></td>
                         <td>
@@ -161,8 +177,13 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:16px;">
                     <div class="form-group" style="margin:0;">
-                        <label class="form-label">Harga Beli (Rp) <span style="color:red">*</span></label>
-                        <input type="number" name="harga_beli" class="form-control" required placeholder="0" min="0">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <label class="form-label" style="margin:0;">Harga Beli (Rp) <span style="color:red">*</span></label>
+                            <button type="button" onclick="toggleInputVisibility('tambah_harga_beli', this)" style="background:none; border:none; cursor:pointer; font-size:11px; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-eye-slash"></i> <span>Sensor</span>
+                            </button>
+                        </div>
+                        <input type="number" name="harga_beli" id="tambah_harga_beli" class="form-control" required placeholder="0" min="0">
                     </div>
                     <div class="form-group" style="margin:0;">
                         <label class="form-label">Harga Jual (Rp) <span style="color:red">*</span></label>
@@ -263,8 +284,13 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                 <div class="form-group">
-                    <label class="form-label">Harga Beli (Rp) <span style="color:red">*</span></label>
-                    <input type="number" name="harga_beli" id="edit_harga_beli" class="form-control" required>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <label class="form-label" style="margin:0;">Harga Beli (Rp) <span style="color:red">*</span></label>
+                        <button type="button" id="btnToggleEditHarga" onclick="toggleInputVisibility('edit_harga_beli', this)" style="background:none; border:none; cursor:pointer; font-size:11px; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;">
+                            <i class="fa-solid fa-eye"></i> <span>Lihat</span>
+                        </button>
+                    </div>
+                    <input type="password" name="harga_beli" id="edit_harga_beli" class="form-control" required style="font-family:inherit;">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Harga Jual (Rp) <span style="color:red">*</span></label>
@@ -305,6 +331,94 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
 </div>
 
 <script>
+// Pengaturan sensor harga beli (Default: disembunyikan / sensor demi privasi)
+let isHargaBeliHidden = localStorage.getItem('hideHargaBeli') !== 'false'; // default true
+
+function updateHargaBeliDisplay() {
+    const wrappers = document.querySelectorAll('.harga-beli-wrapper');
+    const btnIcon = document.getElementById('iconToggleHargaBeli');
+    const btnLabel = document.getElementById('labelToggleHargaBeli');
+    const thIcon = document.getElementById('thIconHargaBeli');
+
+    wrappers.forEach(w => {
+        const txt = w.querySelector('.harga-beli-text');
+        const eye = w.querySelector('.eye-mini');
+        if (isHargaBeliHidden) {
+            txt.textContent = '••••••';
+            txt.style.letterSpacing = '1px';
+            txt.style.color = 'var(--text-muted)';
+            if (eye) {
+                eye.className = 'fa-solid fa-eye-slash eye-mini';
+                eye.style.opacity = '0.4';
+            }
+            w.style.background = 'transparent';
+        } else {
+            txt.textContent = w.getAttribute('data-real');
+            txt.style.letterSpacing = 'normal';
+            txt.style.color = 'var(--text-main)';
+            if (eye) {
+                eye.className = 'fa-solid fa-eye eye-mini';
+                eye.style.opacity = '0.7';
+            }
+        }
+    });
+
+    if (btnIcon && btnLabel) {
+        if (isHargaBeliHidden) {
+            btnIcon.className = 'fa-solid fa-eye';
+            btnLabel.textContent = 'Tampilkan Harga Beli';
+            if (thIcon) thIcon.className = 'fa-solid fa-eye-slash';
+        } else {
+            btnIcon.className = 'fa-solid fa-eye-slash';
+            btnLabel.textContent = 'Sembunyikan Harga Beli';
+            if (thIcon) thIcon.className = 'fa-solid fa-eye';
+        }
+    }
+}
+
+function toggleAllHargaBeli() {
+    isHargaBeliHidden = !isHargaBeliHidden;
+    localStorage.setItem('hideHargaBeli', isHargaBeliHidden ? 'true' : 'false');
+    updateHargaBeliDisplay();
+}
+
+function toggleSingleHargaBeli(el) {
+    const txt = el.querySelector('.harga-beli-text');
+    const eye = el.querySelector('.eye-mini');
+    const realVal = el.getAttribute('data-real');
+    
+    if (txt.textContent === '••••••') {
+        txt.textContent = realVal;
+        txt.style.letterSpacing = 'normal';
+        txt.style.color = 'var(--text-main)';
+        if (eye) {
+            eye.className = 'fa-solid fa-eye eye-mini';
+            eye.style.opacity = '0.7';
+        }
+        el.style.background = 'rgba(0,0,0,0.04)';
+    } else {
+        txt.textContent = '••••••';
+        txt.style.letterSpacing = '1px';
+        txt.style.color = 'var(--text-muted)';
+        if (eye) {
+            eye.className = 'fa-solid fa-eye-slash eye-mini';
+            eye.style.opacity = '0.4';
+        }
+        el.style.background = 'transparent';
+    }
+}
+
+function toggleInputVisibility(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (inp.type === 'password') {
+        inp.type = 'number';
+        btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> <span>Sensor</span>';
+    } else {
+        inp.type = 'password';
+        btn.innerHTML = '<i class="fa-solid fa-eye"></i> <span>Lihat</span>';
+    }
+}
+
 function editBarang(data) {
     document.getElementById('edit_id').value          = data.id_barang;
     document.getElementById('edit_kode').value        = data.kode_barang;
@@ -315,6 +429,12 @@ function editBarang(data) {
     document.getElementById('edit_stok_min').value    = data.stok_min;
     document.getElementById('edit_satuan').value      = data.satuan      ?? '';
     document.getElementById('edit_deskripsi').value   = data.deskripsi   ?? '';
+
+    // Pastikan harga beli di modal edit default-nya tersensor
+    const inpBeli = document.getElementById('edit_harga_beli');
+    const btnBeli = document.getElementById('btnToggleEditHarga');
+    if (inpBeli) inpBeli.type = 'password';
+    if (btnBeli) btnBeli.innerHTML = '<i class="fa-solid fa-eye"></i> <span>Lihat</span>';
 
     // Set kategori dropdown
     const sel = document.getElementById('edit_kategori');
@@ -330,4 +450,7 @@ function editBarang(data) {
 
     openModal('modalEdit');
 }
+
+// Jalankan saat halaman selesai dimuat
+document.addEventListener('DOMContentLoaded', updateHargaBeliDisplay);
 </script>

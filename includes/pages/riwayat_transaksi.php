@@ -50,8 +50,13 @@ $qTrx = get_query($conn, "
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($qTrx->num_rows > 0):
+                    <?php 
+                    $totalPcsAll = 0;
+                    $totalOmsetAll = 0;
+                    if ($qTrx->num_rows > 0):
                         while ($row = $qTrx->fetch_assoc()):
+                            $totalPcsAll += (int)$row['total_item'];
+                            $totalOmsetAll += (int)$row['grand_total'];
                     ?>
                     <tr>
                         <td><strong><?= htmlspecialchars($row['no_faktur']) ?></strong></td>
@@ -68,7 +73,17 @@ $qTrx = get_query($conn, "
                             </button>
                         </td>
                     </tr>
-                    <?php endwhile; else: ?>
+                    <?php endwhile; ?>
+                    <tfoot>
+                        <tr style="background:#f8fafc; font-weight:700; border-top:2px solid var(--border-color);">
+                            <td colspan="2" style="text-align:right; font-size:14px; text-transform:uppercase;">TOTAL KESELURUHAN:</td>
+                            <td style="font-size:15px; color:var(--primary-color);"><?= number_format($totalPcsAll, 0, ',', '.') ?> pcs</td>
+                            <td></td>
+                            <td style="font-size:15px; color:var(--primary-color);">Rp <?= number_format($totalOmsetAll, 0, ',', '.') ?></td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                    <?php else: ?>
                     <tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">Tidak ada transaksi di rentang ini.</td></tr>
                     <?php endif; ?>
                 </tbody>

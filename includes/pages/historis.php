@@ -84,17 +84,34 @@ $katFilter = isset($_GET['kategori']) ? $_GET['kategori'] : '';
                 if($kbFilter != '') $kondisi .= " AND d.kode_barang = '$kbFilter'";
                 if($katFilter != '') $kondisi .= " AND b.kategori = '$katFilter'";
                 
-                $sqlHist = "SELECT d.kode_barang, b.nama_produk, DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty FROM tbl_detail_penjualan d JOIN tbl_penjualan p ON d.id_penjualan=p.id_penjualan JOIN tbl_barang b ON d.kode_barang=b.kode_barang WHERE $kondisi GROUP BY d.kode_barang, DATE(p.tanggal_waktu) ORDER BY tgl ASC";
+                $sqlHist = "SELECT d.kode_barang, COALESCE(b.nama_produk, d.kode_barang) as nama_produk, DATE(p.tanggal_waktu) as tgl, SUM(d.qty) as total_qty 
+                            FROM tbl_detail_penjualan d 
+                            JOIN tbl_penjualan p ON d.id_penjualan=p.id_penjualan 
+                            LEFT JOIN tbl_barang b ON d.kode_barang=b.kode_barang 
+                            WHERE $kondisi 
+                            GROUP BY d.kode_barang, DATE(p.tanggal_waktu) 
+                            ORDER BY tgl ASC";
                 $qHist = get_query($conn, $sqlHist);
                 
-                if($qHist->num_rows > 0): while($row = $qHist->fetch_assoc()): ?>
+                $totalSemuaUnit = 0;
+                if($qHist->num_rows > 0): 
+                    while($row = $qHist->fetch_assoc()): 
+                        $totalSemuaUnit += (int)$row['total_qty'];
+                ?>
                 <tr>
-                    <td><strong><?= $row['kode_barang'] ?></strong></td>
-                    <td><?= $row['nama_produk'] ?></td>
+                    <td><strong><?= htmlspecialchars($row['kode_barang']) ?></strong></td>
+                    <td><?= htmlspecialchars($row['nama_produk']) ?></td>
                     <td><?= date('d/m/Y', strtotime($row['tgl'])) ?></td>
                     <td><strong style="color:var(--primary-color)"><?= $row['total_qty'] ?> Unit</strong></td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endwhile; ?>
+                <tfoot>
+                    <tr style="background:#f8fafc; font-weight:700; border-top:2px solid var(--border-color);">
+                        <td colspan="3" style="text-align:right; font-size:14px; text-transform:uppercase;">Total Keseluruhan Barang Terjual:</td>
+                        <td style="font-size:15px; color:var(--primary-color);"><?= number_format($totalSemuaUnit, 0, ',', '.') ?> Unit</td>
+                    </tr>
+                </tfoot>
+                <?php else: ?>
                 <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">Tidak ada data historis di rentang ini.</td></tr>
                 <?php endif; ?>
                 </tbody>
