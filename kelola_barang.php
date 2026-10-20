@@ -11,7 +11,10 @@ $pageTitle = "Kelola Data Barang";
     <title><?= $pageTitle ?> - A STORE</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sweetalert2.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/notifications.js"></script>
     <style>
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
         .action-buttons { display: flex; gap: 12px; }
@@ -57,9 +60,17 @@ $pageTitle = "Kelola Data Barang";
 
                 <!-- Flash Message Error/Success -->
                 <?php if(isset($_GET['msg'])): ?>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showSuccess(<?= json_encode($_GET['msg']) ?>);
+                    cleanUrlFlashParams();
+                });
+                </script>
+                <noscript>
                 <div style="padding:12px 16px; background:var(--success-light); color:var(--success-color); border-radius:8px; margin-bottom:20px; font-weight:500;">
                     <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_GET['msg']); ?>
                 </div>
+                </noscript>
                 <?php endif; ?>
 
                 <div class="chart-card">
@@ -125,7 +136,7 @@ $pageTitle = "Kelola Data Barang";
                                         <button class="btn-action-icon btn-edit" onclick="editData(<?= htmlspecialchars(json_encode($row)) ?>)" title="Edit Data"><i class="fa-solid fa-pen"></i></button>
                                         
                                         <!-- Delete Form -->
-                                        <form action="action_barang.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus barang <?= $row['nama_produk'] ?>?');">
+                                        <form action="action_barang.php" method="POST" style="display:inline;" onsubmit="return confirmDeleteForm(event, this, 'Yakin ingin menghapus barang <?= htmlspecialchars($row['nama_produk'], ENT_QUOTES) ?>?');">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="id_barang" value="<?= $row['id_barang'] ?>">
                                             <button type="submit" class="btn-action-icon btn-delete" title="Hapus"><i class="fa-solid fa-trash"></i></button>

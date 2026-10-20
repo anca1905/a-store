@@ -16,11 +16,13 @@ while($rk = $qKategori->fetch_assoc()) {
 
 <div class="dashboard-content-wrapper" style="padding:20px;">
     
+    <noscript>
     <?php if(isset($_GET['msg'])): ?>
     <div style="padding:12px 16px; background:var(--success-light); color:var(--success-color); border-radius:8px; font-weight:500; display:flex; align-items:center; gap:8px; margin-bottom:20px;">
         <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_GET['msg']) ?>
     </div>
     <?php endif; ?>
+    </noscript>
 
     <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
         
@@ -275,7 +277,7 @@ function addToCart(item) {
             cart[idx].qty++; 
             cart[idx].subtotal = cart[idx].qty * cart[idx].harga; 
         } else {
-            alert('Stok tidak mencukupi! Sisa stok: ' + item.stok_aktual);
+            showToast('warning', 'Stok Tidak Mencukupi', 'Sisa stok produk: ' + item.stok_aktual);
         }
     } else {
         cart.push({ 
@@ -296,7 +298,7 @@ function updateQty(i, v) {
         cart.splice(i, 1); 
     } else {
         if(v > cart[i].stok_max) { 
-            alert('Stok maksimal: ' + cart[i].stok_max); 
+            showToast('warning', 'Batas Stok Tercapai', 'Stok maksimal: ' + cart[i].stok_max); 
             v = cart[i].stok_max; 
         }
         cart[i].qty = v; 

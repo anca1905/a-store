@@ -327,9 +327,18 @@ $roleUser   = $_SESSION['role'] ?? '';
 
 // ─── Notifikasi stok kritis (hanya Pimpinan) ─────────────────────────
 $jumlahKritis = 0;
+$kritisListItems = [];
 if ($role === 'Pimpinan') {
     $cekKritis    = get_query($conn, "SELECT COUNT(*) as jml FROM tbl_barang WHERE stok_aktual <= stok_min");
-    $jumlahKritis = $cekKritis->fetch_assoc()['jml'];
+    $jumlahKritis = (int)($cekKritis->fetch_assoc()['jml'] ?? 0);
+    if ($jumlahKritis > 0) {
+        $qKItems = get_query($conn, "SELECT kode_barang, nama_produk, stok_aktual, stok_min FROM tbl_barang WHERE stok_aktual <= stok_min ORDER BY stok_aktual ASC LIMIT 15");
+        if ($qKItems) {
+            while ($rK = $qKItems->fetch_assoc()) {
+                $kritisListItems[] = $rK;
+            }
+        }
+    }
 }
 
 // ─── AJAX Handler Detail Transaksi (Mode Struk) ────────────────────────
@@ -450,7 +459,10 @@ if (isset($_GET['ajax_detail'])) {
     <title><?= htmlspecialchars($pageTitle) ?> — A STORE</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sweetalert2.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/notifications.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <?php if (in_array($page, ['des', 'des_kategori'])): ?>
     <style>
@@ -692,7 +704,7 @@ if (isset($_GET['ajax_detail'])) {
             </nav>
 
             <div class="sidebar-footer">
-                <a href="logout.php" class="nav-item logout-item">
+                <a href="logout.php" class="nav-item logout-item" onclick="confirmLogout(event)">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Keluar</span>
                 </a>
@@ -712,16 +724,31 @@ if (isset($_GET['ajax_detail'])) {
                             <span class="badge" style="position:absolute; top:-2px; right:-2px; width:16px; height:16px; background:var(--primary-dark); color:#fff; font-size:9px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff;"><?= $jumlahKritis ?></span>
                             <?php endif; ?>
                         </div>
-                        <div id="notifDropdown" style="display:none; position:absolute; top:100%; right:-10px; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.05); min-width:250px; z-index:100; margin-top:10px; overflow:hidden;">
-                            <div style="padding:12px 16px; font-weight:700; border-bottom:1px solid var(--border-color); font-size:13px; color:var(--text-main);">Notifikasi</div>
+                        <div id="notifDropdown" style="display:none; position:absolute; top:100%; right:-10px; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.05); min-width:260px; z-index:100; margin-top:10px; overflow:hidden;">
+                            <div style="padding:12px 16px; font-weight:700; border-bottom:1px solid var(--border-color); font-size:13px; color:var(--text-main); display:flex; justify-content:space-between; align-items:center;">
+                                <span>Notifikasi</span>
+                                <?php if($jumlahKritis > 0): ?>
+                                    <span style="font-size:11px; background:var(--danger-light); color:var(--danger-color); padding:2px 8px; border-radius:12px; font-weight:600;"><?= $jumlahKritis ?> Menipis</span>
+                                <?php endif; ?>
+                            </div>
                             <?php if($jumlahKritis > 0): ?>
-                                <a href="?page=stok" style="display:flex; align-items:center; gap:12px; padding:12px 16px; text-decoration:none; color:var(--text-main); border-bottom:1px solid var(--border-color); background:var(--danger-light);">
-                                    <div style="width:32px; height:32px; border-radius:50%; background:var(--danger-color); color:white; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                                    <div style="flex:1;">
-                                        <div style="font-size:13px; font-weight:600;">Stok Kritis</div>
-                                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Ada <?= $jumlahKritis ?> barang menipis</div>
+                                <div style="padding:12px 16px; border-bottom:1px solid var(--border-color); background:var(--danger-light);">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div style="width:32px; height:32px; border-radius:50%; background:var(--danger-color); color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                        <div style="flex:1;">
+                                            <div style="font-size:13px; font-weight:600;">Stok Kritis</div>
+                                            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Ada <?= $jumlahKritis ?> barang menipis</div>
+                                        </div>
                                     </div>
-                                </a>
+                                    <div style="margin-top:10px; display:flex; gap:6px;">
+                                        <button type="button" onclick="bukaModalNotifikasiKritis()" class="btn btn-outline" style="padding:5px 8px; font-size:11px; border-radius:4px; background:#fff; flex:1; justify-content:center;">
+                                            <i class="fa-solid fa-bell"></i> Modal Detail
+                                        </button>
+                                        <a href="?page=stok&filter=kritis" class="btn btn-primary" style="padding:5px 8px; font-size:11px; border-radius:4px; flex:1; justify-content:center; text-decoration:none;">
+                                            Kelola Stok
+                                        </a>
+                                    </div>
+                                </div>
                             <?php else: ?>
                                 <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">Tidak ada notifikasi baru.</div>
                             <?php endif; ?>
@@ -748,19 +775,33 @@ if (isset($_GET['ajax_detail'])) {
                         </div>
                         <div id="profileDropdown" style="display:none; position:absolute; top:100%; right:0; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.05); min-width:180px; z-index:100; margin-top:10px; overflow:hidden;">
                             <a href="?page=pengaturan" style="display:block; padding:12px 16px; color:var(--text-main); text-decoration:none; font-size:13px; border-bottom:1px solid var(--border-color);"><i class="fa-solid fa-gear" style="width:20px; color:var(--text-muted);"></i> Pengaturan</a>
-                            <a href="logout.php" style="display:block; padding:12px 16px; color:var(--danger-color); text-decoration:none; font-size:13px;"><i class="fa-solid fa-right-from-bracket" style="width:20px;"></i> Keluar</a>
+                            <a href="logout.php" style="display:block; padding:12px 16px; color:var(--danger-color); text-decoration:none; font-size:13px;" onclick="confirmLogout(event)"><i class="fa-solid fa-right-from-bracket" style="width:20px;"></i> Keluar</a>
                         </div>
                     </div>
                 </div>
             </header>
 
             <main class="content-area" style="padding:24px 32px 40px 32px;">
+                <?php
+                $swalFlash = null;
+                if (isset($_GET['msg'])) {
+                    $swalFlash = ['type' => 'success', 'title' => 'Berhasil!', 'message' => $_GET['msg']];
+                } elseif (isset($_GET['sukses'])) {
+                    $swalFlash = ['type' => 'success', 'title' => 'Berhasil!', 'message' => $_GET['sukses']];
+                } elseif (isset($_GET['error'])) {
+                    $swalFlash = ['type' => 'error', 'title' => 'Perhatian / Terjadi Kesalahan', 'message' => $_GET['error']];
+                } elseif (isset($_GET['warning'])) {
+                    $swalFlash = ['type' => 'warning', 'title' => 'Peringatan', 'message' => $_GET['warning']];
+                }
+                ?>
+                <noscript>
                 <?php if (isset($_GET['error'])): ?>
                     <div class="flash-error">
                         <i class="fa-solid fa-circle-exclamation"></i>
                         <?= htmlspecialchars($_GET['error']) ?>
                     </div>
                 <?php endif; ?>
+                </noscript>
 
                 <?php
                 $pageFile = "includes/pages/{$page}.php";
@@ -855,11 +896,59 @@ if (isset($_GET['ajax_detail'])) {
                         a.download = "Struk_" + noFaktur + ".png";
                         a.click();
                         URL.revokeObjectURL(url);
-                        alert("Gambar struk berhasil diunduh! Anda bisa melampirkannya (Drag & Drop) langsung ke chat WhatsApp.");
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil Diunduh!',
+                            text: 'Gambar struk berhasil diunduh. Anda bisa melampirkannya langsung ke WhatsApp.',
+                            confirmButtonColor: '#111111'
+                        });
                         btn.innerHTML = originalText; 
                         btn.disabled = false;
                     }
                 }, "image/png");
+            });
+        }
+
+        // ─── Trigger SweetAlert Flash Message jika ada di URL ────────────────
+        <?php if (!empty($swalFlash)): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            showAlert('<?= $swalFlash['type'] ?>', '<?= addslashes(htmlspecialchars($swalFlash['title'])) ?>', '<?= addslashes(htmlspecialchars($swalFlash['message'])) ?>', <?= $swalFlash['type'] === 'success' ? 3200 : 'null' ?>);
+            cleanUrlFlashParams();
+        });
+        <?php endif; ?>
+
+        // ─── Modal Notifikasi Stok Kritis ───────────────────────────────────
+        const listKritisGlobal = <?= json_encode($kritisListItems) ?>;
+        function bukaModalNotifikasiKritis() {
+            if (!listKritisGlobal || listKritisGlobal.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Stok Aman',
+                    text: 'Semua persediaan barang dalam kondisi aman dan mencukupi.',
+                    confirmButtonColor: '#111111'
+                });
+                return;
+            }
+            let html = '<div style="max-height:280px; overflow-y:auto; text-align:left; margin-top:10px;">';
+            html += '<table style="width:100%; font-size:12.5px; border-collapse:collapse;">';
+            html += '<tr style="border-bottom:1px solid #e2e8f0; color:#64748b; font-weight:600;"><th style="padding:8px 6px; text-align:left;">Kode</th><th style="padding:8px 6px; text-align:left;">Barang</th><th style="padding:8px 6px; text-align:center;">Sisa</th><th style="padding:8px 6px; text-align:center;">Batas Min</th></tr>';
+            listKritisGlobal.forEach(item => {
+                html += `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:8px 6px; font-weight:600;">${item.kode_barang}</td><td style="padding:8px 6px;">${item.nama_produk}</td><td style="padding:8px 6px; text-align:center; color:#ef4444; font-weight:700;">${item.stok_aktual}</td><td style="padding:8px 6px; text-align:center; color:#64748b;">${item.stok_min}</td></tr>`;
+            });
+            html += '</table></div>';
+            Swal.fire({
+                title: '⚠️ Peringatan Stok Kritis',
+                html: html,
+                icon: 'warning',
+                confirmButtonColor: '#111111',
+                confirmButtonText: '<i class="fa-solid fa-boxes-stacked"></i> Buka Manajemen Stok',
+                showCancelButton: true,
+                cancelButtonText: 'Tutup',
+                cancelButtonColor: '#64748b'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    window.location.href = '?page=stok&filter=kritis';
+                }
             });
         }
     </script>

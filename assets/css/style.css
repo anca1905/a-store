@@ -1245,3 +1245,99 @@ ul {
         justify-content: flex-start;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   SweetAlert2 Custom Modern Theme (A STORE Design System)
+   ══════════════════════════════════════════════════════════════ */
+.swal2-container {
+    font-family: 'Outfit', sans-serif !important;
+    z-index: 999999 !important;
+}
+
+.swal2-popup {
+    border-radius: 16px !important;
+    padding: 24px !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.15) !important;
+    font-family: 'Outfit', sans-serif !important;
+    border: 1px solid var(--border-color, #E5E7EB) !important;
+    background: #FFFFFF !important;
+}
+
+.swal2-title {
+    font-size: 19px !important;
+    font-weight: 700 !important;
+    color: var(--text-main, #111827) !important;
+    margin-bottom: 8px !important;
+    padding: 0 !important;
+}
+
+.swal2-html-container {
+    font-size: 14px !important;
+    color: var(--text-muted, #4b5563) !important;
+    line-height: 1.5 !important;
+    margin: 10px 0 0 !important;
+}
+
+.swal2-actions {
+    margin-top: 22px !important;
+    gap: 10px !important;
+}
+
+.swal2-styled {
+    font-family: 'Outfit', sans-serif !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.swal2-confirm {
+    background-color: var(--primary-color, #111111) !important;
+    color: #ffffff !important;
+}
+
+.swal2-confirm:hover {
+    background-color: #000000 !important;
+    transform: translateY(-1px);
+}
+
+.swal2-cancel {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+.swal2-cancel:hover {
+    background-color: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+.swal2-icon {
+    margin: 8px auto 16px !important;
+    transform: scale(0.9);
+}
+
+.swal2-timer-progress-bar {
+    background: var(--primary-color, #111111) !important;
+    height: 3px !important;
+}
+
+/* Toast styling override */
+.swal2-toast {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 12px 18px !important;
+    background: #FFFFFF !important;
+}
+
+.swal2-toast .swal2-title {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+.swal2-toast .swal2-html-container {
+    font-size: 12.5px !important;
+    margin: 2px 0 0 !important;
+}

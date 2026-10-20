@@ -18,7 +18,10 @@ while($row = $qBarang->fetch_assoc()) {
     <title><?= $pageTitle ?> - A STORE</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sweetalert2.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/notifications.js"></script>
     <style>
         .pos-grid { display: flex; gap: 24px; flex-wrap: wrap; align-items:flex-start; }
         .pos-left { flex: 7; display: flex; flex-direction: column; gap: 24px; min-width: 400px; }
@@ -57,9 +60,17 @@ while($row = $qBarang->fetch_assoc()) {
                 </div>
 
                 <?php if(isset($_GET['msg'])): ?>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showSuccess(<?= json_encode($_GET['msg']) ?>);
+                    cleanUrlFlashParams();
+                });
+                </script>
+                <noscript>
                 <div style="padding:12px 16px; background:var(--success-light); color:var(--success-color); border-radius:8px; margin-bottom:20px; font-weight:500;">
                     <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_GET['msg']); ?>
                 </div>
+                </noscript>
                 <?php endif; ?>
 
                 <div class="pos-grid">
@@ -210,7 +221,7 @@ while($row = $qBarang->fetch_assoc()) {
                     cart[existingIndex].qty += 1;
                     cart[existingIndex].subtotal = cart[existingIndex].qty * cart[existingIndex].harga;
                 } else {
-                    alert('Oops! Stok tidak mencukupi.');
+                    showToast('warning', 'Stok Tidak Mencukupi', 'Sisa stok produk: ' + item.stok_aktual);
                 }
             } else {
                 cart.push({
@@ -261,7 +272,7 @@ while($row = $qBarang->fetch_assoc()) {
             }
             const dataItem = dbBarang.find(i => i.kode_barang === cart[index].kode_barang);
             if(newQty > dataItem.stok_aktual) {
-                alert('Stok tidak mencukupi! Maksimal: ' + dataItem.stok_aktual);
+                showToast('warning', 'Batas Stok Maksimal', 'Stok maksimal: ' + dataItem.stok_aktual);
                 newQty = dataItem.stok_aktual;
             }
             cart[index].qty = newQty;

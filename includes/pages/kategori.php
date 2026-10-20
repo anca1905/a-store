@@ -5,6 +5,7 @@ $qKat = get_query($conn, "SELECT * FROM tbl_kategori ORDER BY nama_kategori ASC"
 
 <div class="dashboard-content-wrapper">
 
+    <noscript>
     <?php if (isset($_GET['msg'])): ?>
     <div style="padding:12px 16px; background:var(--success-light); color:var(--success-color); border-radius:8px; margin-bottom:20px; font-weight:500; display:flex; align-items:center; gap:8px;">
         <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($_GET['msg']) ?>
@@ -13,6 +14,7 @@ $qKat = get_query($conn, "SELECT * FROM tbl_kategori ORDER BY nama_kategori ASC"
     <?php if (isset($_GET['error'])): ?>
     <div class="flash-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($_GET['error']) ?></div>
     <?php endif; ?>
+    </noscript>
 
     <div class="chart-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -56,7 +58,7 @@ $qKat = get_query($conn, "SELECT * FROM tbl_kategori ORDER BY nama_kategori ASC"
                                 <i class="fa-solid fa-pen"></i>
                             </button>
                             <form action="action_kategori.php" method="POST" style="display:inline;"
-                                  onsubmit="return confirm('Hapus kategori <?= htmlspecialchars($row['nama_kategori'], ENT_QUOTES) ?>?');">
+                                  onsubmit="return confirmDeleteForm(event, this, 'Hapus kategori <?= htmlspecialchars($row['nama_kategori'], ENT_QUOTES) ?>?');">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id_kategori" value="<?= $row['id_kategori'] ?>">
                                 <button type="submit" class="btn-action-icon btn-delete" title="Hapus">

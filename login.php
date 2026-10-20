@@ -13,7 +13,10 @@ if(isset($_SESSION['user_id'])) {
     <title>Login - A STORE BI System</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sweetalert2.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/notifications.js"></script>
     <style>
         body {
             background-color: var(--bg-body);
@@ -382,6 +385,20 @@ if(isset($_SESSION['user_id'])) {
                 toggleIcon.classList.add('fa-eye');
             }
         }
+
+        <?php if (isset($_GET['error'])): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            showError(<?= json_encode($_GET['error']) ?>, 'Gagal Masuk');
+            cleanUrlFlashParams();
+        });
+        <?php endif; ?>
+
+        <?php if (isset($_GET['msg'])): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            showSuccess(<?= json_encode($_GET['msg']) ?>, 'Informasi');
+            cleanUrlFlashParams();
+        });
+        <?php endif; ?>
     </script>
 </body>
 </html>

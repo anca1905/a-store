@@ -688,9 +688,16 @@ if ($hitung) {
             </div>
             
             <?php if(isset($msgRiwayat)): ?>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showSuccess(<?= json_encode($msgRiwayat) ?>);
+                });
+                </script>
+                <noscript>
                 <div style="margin-top:12px; padding:10px; background:#dcfce7; color:#166534; border-radius:6px; font-size:13px; text-align:center;">
                     <?= $msgRiwayat ?>
                 </div>
+                </noscript>
             <?php endif; ?>
 
         <?php else: ?>
@@ -962,7 +969,7 @@ if ($hitung) {
                         <button type="button" class="btn btn-outline btn-sm" onclick="bukaModalDetailRiwayat(<?= $rh['id_riwayat'] ?>)" style="padding:4px 8px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px;" title="Lihat Ringkasan Modal">
                             <i class="fa-solid fa-eye" style="color:var(--primary-color);"></i>
                         </button>
-                        <a href="?page=des&action=hapus_riwayat&id_riwayat=<?= $rh['id_riwayat'] ?>" onclick="return confirm('Apakah Anda yakin ingin menghapus riwayat peramalan ini?')" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:12px; border-radius:6px; color:#ef4444; border-color:#fee2e2;" title="Hapus Riwayat">
+                        <a href="?page=des&action=hapus_riwayat&id_riwayat=<?= $rh['id_riwayat'] ?>" onclick="return confirmDeleteLink(event, this.href, 'Apakah Anda yakin ingin menghapus riwayat peramalan ini?');" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:12px; border-radius:6px; color:#ef4444; border-color:#fee2e2;" title="Hapus Riwayat">
                             <i class="fa-solid fa-trash-can"></i>
                         </a>
                     </td>
@@ -1372,7 +1379,7 @@ function cetakModalRiwayat() {
     
     const printWin = window.open('', '_blank', 'width=950,height=750');
     if (!printWin) {
-        alert('Izinkan pop-up peramban untuk mencetak laporan riwayat.');
+        showAlert('warning', 'Pop-up Diblokir', 'Izinkan pop-up peramban untuk mencetak laporan riwayat.');
         return;
     }
     

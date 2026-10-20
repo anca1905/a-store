@@ -11,7 +11,10 @@ $pageTitle = "Cetak Pusat Laporan";
     <title><?= $pageTitle ?> - A STORE BI System</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/sweetalert2.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/notifications.js"></script>
     <style>
         .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
         .report-card { background: var(--surface-card); padding: 30px; border-radius: var(--border-radius-lg); text-align: center; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); transition: 0.3s; }
@@ -41,7 +44,7 @@ $pageTitle = "Cetak Pusat Laporan";
                         <i class="fa-solid fa-file-invoice-dollar report-icon"></i>
                         <h3 class="report-title">Laporan Penjualan (Riil)</h3>
                         <p class="report-desc">Cetak invoice data penjualan berdasarkan transaksi table SQL Penjualan bulan tertentu.</p>
-                        <form action="" onsubmit="alert('Fitur Cetak PDF membutuhkan FPDF/DomPDF PHP Library. Ini adalah simulasi.'); return false;">
+                        <form action="" onsubmit="showAlert('info', 'Simulasi Cetak', 'Fitur Cetak PDF membutuhkan FPDF/DomPDF PHP Library. Ini adalah simulasi.'); return false;">
                             <div style="text-align: left;">
                                 <label style="font-size:13px; color:var(--text-muted); display:block; margin-bottom:5px;">Pilih Bulan</label>
                                 <input type="month" required class="form-control" value="<?= date('Y-m') ?>">
@@ -54,14 +57,14 @@ $pageTitle = "Cetak Pusat Laporan";
                         <i class="fa-solid fa-chart-line report-icon" style="color:var(--warning-color)"></i>
                         <h3 class="report-title">Laporan Kalkulasi Prediksi</h3>
                         <p class="report-desc">Print kalkulator matrix Prediksi SMA untuk diserahkan ke tim gudang persediaan.</p>
-                        <form action="" onsubmit="alert('Fitur Cetak PDF Rekap SMA.'); return false;">
+                        <form action="" onsubmit="showAlert('info', 'Simulasi Cetak', 'Fitur Cetak PDF Rekap SMA.'); return false;">
                             <div style="text-align: left;">
                                 <label style="font-size:13px; color:var(--text-muted); display:block; margin-bottom:5px;">Barang yang Diprediksi</label>
                                 <select class="form-control">
                                     <option>Semua Barang</option>
                                     <?php
-                                    $qB = get_query($conn, "SELECT kode_barang FROM tbl_barang LIMIT 3");
-                                    while($rB=$qB->fetch_assoc()) { echo "<option>{$rB['kode_barang']}</option>"; }
+                                     $qB = get_query($conn, "SELECT kode_barang FROM tbl_barang LIMIT 3");
+                                     while($rB=$qB->fetch_assoc()) { echo "<option>{$rB['kode_barang']}</option>"; }
                                     ?>
                                 </select>
                             </div>
@@ -73,7 +76,7 @@ $pageTitle = "Cetak Pusat Laporan";
                         <i class="fa-solid fa-boxes-stacked report-icon" style="color:var(--success-color)"></i>
                         <h3 class="report-title">Status Stok Aktual</h3>
                         <p class="report-desc">Download format Excel langsung tarikan dari tabel `tbl_barang` yang berisi status stok terkini.</p>
-                        <form action="" onsubmit="alert('Cetak format CSV/Excel ke lokal...'); return false;">
+                        <form action="" onsubmit="showAlert('info', 'Simulasi Download', 'Cetak format CSV/Excel ke lokal...'); return false;">
                             <div style="text-align: left;">
                                 <label style="font-size:13px; color:var(--text-muted); display:block; margin-bottom:5px;">Kondisi Barang</label>
                                 <select class="form-control">

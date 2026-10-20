@@ -70,6 +70,7 @@ if ($fotoProfil && file_exists(__DIR__ . '/../../assets/img/profil/' . $fotoProf
 
 <div class="dashboard-content-wrapper">
 
+    <noscript>
     <?php if ($successMsg): ?>
     <div style="padding:12px 16px; background:var(--success-light); color:var(--success-color); border-radius:8px; margin-bottom:20px; font-weight:500; display:flex; align-items:center; gap:8px;">
         <i class="fa-solid fa-check-circle"></i> <?= $successMsg ?>
@@ -77,6 +78,24 @@ if ($fotoProfil && file_exists(__DIR__ . '/../../assets/img/profil/' . $fotoProf
     <?php endif; ?>
     <?php if ($errorMsg): ?>
     <div class="flash-error"><i class="fa-solid fa-circle-exclamation"></i> <?= $errorMsg ?></div>
+    <?php endif; ?>
+    </noscript>
+
+    <?php if ($successMsg): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        showSuccess(<?= json_encode($successMsg) ?>);
+        cleanUrlFlashParams();
+    });
+    </script>
+    <?php endif; ?>
+    <?php if ($errorMsg): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        showError(<?= json_encode($errorMsg) ?>);
+        cleanUrlFlashParams();
+    });
+    </script>
     <?php endif; ?>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
@@ -109,7 +128,7 @@ if ($fotoProfil && file_exists(__DIR__ . '/../../assets/img/profil/' . $fotoProf
                 <?php if ($fotoProfil): ?>
                 <div style="margin-top:10px;">
                     <form action="action_profil.php" method="POST"
-                          onsubmit="return confirm('Hapus foto profil?');">
+                          onsubmit="return confirmDeleteForm(event, this, 'Hapus foto profil akun Anda?');">
                         <input type="hidden" name="action" value="hapus_foto_profil">
                         <button type="submit" style="background:none; border:none; color:var(--danger-color); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
                             <i class="fa-solid fa-trash-can" style="font-size:11px;"></i> Hapus Foto
