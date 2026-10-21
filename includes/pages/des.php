@@ -919,7 +919,6 @@ if ($hitung) {
                     <th>Alpha</th>
                     <th>Hasil Peramalan</th>
                     <th>MAPE</th>
-                    <th>Akurasi</th>
                     <th style="text-align:center;">Aksi</th>
                 </tr>
             </thead>
@@ -961,7 +960,6 @@ if ($hitung) {
                     }
                     ?>
                     <td style="color:#ea580c; font-weight:700;"><?= $mapeFormatted ?></td>
-                    <td style="font-weight:600;"><?= $rh['akurasi'] ?>%</td>
                     <td style="white-space:nowrap; text-align:center;">
                         <a href="<?= $linkKalkulator ?>" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px; text-decoration:none; background:#111; color:#fff;" title="Buka Detail Perhitungan Penuh di Halaman (Bukan Modal)">
                             <i class="fa-solid fa-calculator"></i> Buka Detail
@@ -976,7 +974,7 @@ if ($hitung) {
                 </tr>
                 <?php endwhile; else: ?>
                 <tr>
-                    <td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan barang.</td>
+                    <td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Belum ada riwayat peramalan barang.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>
