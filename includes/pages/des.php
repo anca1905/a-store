@@ -551,7 +551,7 @@ if ($hitung) {
             </div>
             
             <div style="margin-bottom:20px;">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Evaluasi Model (MAPE &amp; Akurasi)</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Evaluasi Model (MAPE)</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
                     <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;">
                         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Rata-rata MAPE</div>
@@ -559,13 +559,13 @@ if ($hitung) {
                         <div style="font-size:10px; color:var(--text-muted);">Tingkat Error</div>
                     </div>
                     <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;">
-                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Akurasi Model</div>
-                        <div style="font-size:16px; font-weight:800; color:var(--primary-color); margin-top:2px;"><?= max(0, $akurasi) ?>%</div>
-                        <div style="font-size:10px; color:var(--text-muted);"><?= $kualitas ?></div>
+                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Kategori Model</div>
+                        <div style="font-size:16px; font-weight:800; color:var(--primary-color); margin-top:2px;"><?= $kualitas ?></div>
+                        <div style="font-size:10px; color:var(--text-muted);">Standar Lewis</div>
                     </div>
                 </div>
                 <div style="font-size:12px; line-height:1.5; color:var(--text-muted);">
-                    Rata-rata kesalahan peramalan (MAPE) adalah <strong><?= number_format($avg_mape, 2) ?>%</strong>, sehingga tingkat akurasi peramalan mencapai <strong><?= max(0, $akurasi) ?>%</strong> (Kategori: <strong><?= $kualitas ?></strong>).
+                    Rata-rata kesalahan peramalan (MAPE) adalah <strong><?= number_format($avg_mape, 2) ?>%</strong> (Kategori: <strong><?= $kualitas ?></strong>).
                 </div>
             </div>
 
@@ -815,7 +815,7 @@ if ($hitung) {
                 </p>
             </div>
             <div style="font-size:12px; color:var(--text-muted); background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px;">
-                Akurasi Model: <strong style="color:var(--text-main);"><?= max(0, $akurasi) ?>%</strong> (<?= $kualitas ?>)
+                Rata-rata MAPE: <strong style="color:#ea580c;"><?= number_format($avg_mape, 2) ?>%</strong> (<?= $kualitas ?>)
             </div>
         </div>
     </div>
@@ -878,10 +878,10 @@ if ($hitung) {
                 </tr>
                 <tr style="background:#f1f5f9; font-weight:700;">
                     <td colspan="8" style="text-align:right; padding-right:16px;">
-                        <span style="color:var(--text-main); font-size:13px;">Tingkat Akurasi Model Historis (100% - MAPE):</span>
+                        <span style="color:var(--text-main); font-size:13px;">Kategori Evaluasi Model (Standar Lewis):</span>
                     </td>
                     <td colspan="2" style="color:var(--primary-color); font-size:14px; text-align:center;">
-                        <strong><?= max(0, $akurasi) ?>%</strong> <span style="font-size:11px; font-weight:600; color:var(--text-muted);">(<?= $kualitas ?>)</span>
+                        <strong><?= $kualitas ?></strong> <span style="font-size:11px; font-weight:600; color:#ea580c;">(MAPE <?= number_format($avg_mape, 2) ?>%)</span>
                     </td>
                 </tr>
             </tfoot>
@@ -893,7 +893,7 @@ if ($hitung) {
         &bull; <strong>Error Absolut (|e_t|)</strong>: |Aktual (X_t) - Peramalan (F_t)|.<br>
         &bull; <strong>MAPE per Periode</strong>: (|e_t| / X_t) &times; 100%. Periode ke-1 merupakan inisialisasi ($S'_0, S''_0$) sehingga evaluasi dimulai periode ke-2.<br>
         &bull; <strong>Rata-rata MAPE</strong>: Rata-rata persentase kesalahan dari <?= $count_mape ?> periode uji yang memiliki transaksi penjualan.<br>
-        &bull; <strong>Akurasi Model</strong>: 100% - Rata-rata MAPE = <strong><?= max(0, $akurasi) ?>%</strong> (Standar Lewis: &le;10% Sangat Baik, 10-20% Baik, 20-50% Cukup/Wajar, &gt;50% Kurang/Tidak Akurat).
+        &bull; <strong>Kategori Model (Standar Lewis)</strong>: &le;10% Sangat Baik, 10-20% Baik, 20-50% Cukup/Wajar, &gt;50% Kurang/Tidak Akurat (Kategori peramalan ini: <strong><?= $kualitas ?></strong>).
     </div>
 </div>
 <?php endif; ?>
@@ -1182,8 +1182,8 @@ function bukaModalDetailRiwayat(id) {
     
     document.getElementById('mdr_hasil').innerHTML = Number(data.hasil).toLocaleString('id-ID') + ' <span style="font-size:13px; font-weight:600; color:var(--text-main);">Unit</span>';
     const kualitasText = (detail && detail.kualitas) ? ` (${detail.kualitas})` : '';
-    const mapeText = (detail && detail.avg_mape !== undefined) ? `MAPE: ${detail.avg_mape}% &bull; ` : '';
-    document.getElementById('mdr_akurasi').innerHTML = mapeText + 'Akurasi: ' + data.akurasi + '%' + kualitasText;
+    const mapeValDisplay = (detail && detail.avg_mape !== undefined) ? detail.avg_mape : ((data.mape) ? data.mape : null);
+    document.getElementById('mdr_akurasi').innerHTML = (mapeValDisplay !== null ? 'MAPE: ' + mapeValDisplay + '%' : '') + kualitasText;
     
     document.getElementById('mdr_alpha').textContent = data.alpha;
     const satuanD = (detail && detail.satuan_data) ? detail.satuan_data : (data.target_waktu.indexOf('Minggu') !== -1 ? 'Hari' : 'Minggu');
@@ -1252,10 +1252,10 @@ function bukaModalDetailRiwayat(id) {
             </tr>
             <tr style="background:#f1f5f9; font-weight:700;">
                 <td colspan="8" style="text-align:right; padding-right:16px;">
-                    <span style="font-size:13px;">Tingkat Akurasi Model Historis (100% - MAPE):</span>
+                    <span style="font-size:13px;">Kategori Evaluasi Model (Standar Lewis):</span>
                 </td>
                 <td colspan="2" style="color:var(--primary-color); font-size:14px; text-align:center;">
-                    <strong>${akurasiVal}%</strong> <span style="font-size:11px; font-weight:600; color:var(--text-muted);">(${kualitasVal})</span>
+                    <strong>${kualitasVal}</strong> <span style="font-size:11px; font-weight:600; color:#ea580c;">(MAPE ${Number(avgMape).toFixed(2)}%)</span>
                 </td>
             </tr>
         `;
@@ -1313,7 +1313,7 @@ function bukaModalDetailRiwayat(id) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td colspan="6" style="padding:16px; color:var(--text-muted); font-size:12px;">
-                Ringkasan total hasil peramalan: <strong>${Number(data.hasil).toLocaleString('id-ID')} Unit</strong> dengan tingkat akurasi <strong>${data.akurasi}%</strong>.<br>
+                Ringkasan total hasil peramalan: <strong>${Number(data.hasil).toLocaleString('id-ID')} Unit</strong> dengan evaluasi MAPE <strong>${Number(detail && detail.avg_mape !== undefined ? detail.avg_mape : (data.mape || 0)).toFixed(2)}%</strong>.<br>
                 Gunakan tombol <em>Buka di Kalkulator</em> di bawah untuk menjalankan simulasi lengkap secara langsung.
             </td>
         `;
@@ -1418,8 +1418,8 @@ function cetakModalRiwayat() {
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#ea580c;">${avgMapeVal}</td>
             </tr>
             <tr style="background:#f1f5f9; font-weight:bold;">
-                <td colspan="8" style="text-align:right; padding:6px 12px; border:1px solid #cbd5e1;">Tingkat Akurasi Model Historis (100% - MAPE):</td>
-                <td colspan="2" style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#0284c7; font-size:13px;">${data.akurasi}% ${detail.kualitas ? '(' + detail.kualitas + ')' : ''}</td>
+                <td colspan="8" style="text-align:right; padding:6px 12px; border:1px solid #cbd5e1;">Kategori Evaluasi Model (Standar Lewis):</td>
+                <td colspan="2" style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#0284c7; font-size:13px;">${detail.kualitas ? detail.kualitas : '-'} ${detail.avg_mape !== undefined ? '(MAPE ' + detail.avg_mape + '%)' : ''}</td>
             </tr>
         `;
     }
@@ -1483,7 +1483,7 @@ function cetakModalRiwayat() {
             <div><strong>Objek Analisis:</strong> ${data.referensi} — ${data.nama_referensi}</div>
             <div><strong>Target Proyeksi:</strong> ${data.target_waktu}</div>
             <div><strong>Parameter Model:</strong> Alpha (α) = ${data.alpha} | Periode = ${data.periode}</div>
-            <div><strong>Hasil &amp; Evaluasi:</strong> <span style="font-size:13px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '% &bull; ' : ''}Akurasi: ${data.akurasi}%${detail && detail.kualitas ? ' - ' + detail.kualitas : ''})</div>
+            <div><strong>Hasil &amp; Evaluasi:</strong> <span style="font-size:13px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '%' : ''}${detail && detail.kualitas ? ' - Kategori: ' + detail.kualitas : ''})</div>
         </div>
 
         ${histRowsHtml ? `
