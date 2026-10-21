@@ -673,7 +673,9 @@ if (isset($_GET['ajax_detail'])) {
                         </div>
                         <div id="submenu-peramalan" style="display:<?= in_array($page, ['des', 'des_kategori']) ? 'block' : 'none' ?>; padding-left:32px; padding-top:4px; margin-bottom:4px; flex-direction:column;">
                             <a href="?page=des_kategori" class="nav-item <?= $page === 'des_kategori' ? 'active' : '' ?>" style="padding: 8px 12px; font-size: 13px;">Berdasarkan Kategori</a>
+                            <?php /* Disembunyikan sementara sesuai permintaan
                             <a href="?page=des" class="nav-item <?= $page === 'des' ? 'active' : '' ?>" style="padding: 8px 12px; font-size: 13px;">Berdasarkan Barang</a>
+                            */ ?>
                         </div>
                     </div>
                     <a href="?page=pengaturan" class="nav-item <?= $page === 'pengaturan' ? 'active' : '' ?>">

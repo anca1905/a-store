@@ -107,7 +107,7 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
             </div>
         </div>
 
-        <div class="kpi-card" onclick="window.location.href='?page=des'" style="cursor: pointer;">
+        <div class="kpi-card" onclick="window.location.href='?page=des_kategori'" style="cursor: pointer;">
             <span class="kpi-label">Prediksi Stok Minggu Depan</span>
             <div class="kpi-value-row">
                 <div class="kpi-value-group">
