@@ -190,7 +190,30 @@ if ($koneksi->query($sqlDetail) === TRUE) {
 }
 
 // =============================================
-// 9. Seed Dummy Data tbl_barang (jika kosong)
+// 9. Buat Tabel tbl_riwayat_peramalan (DES)
+// =============================================
+$sqlPeramalan = "CREATE TABLE IF NOT EXISTS tbl_riwayat_peramalan (
+    id_riwayat     INT AUTO_INCREMENT PRIMARY KEY,
+    tanggal_hitung DATETIME DEFAULT NULL,
+    tipe           VARCHAR(20) DEFAULT NULL,
+    referensi      VARCHAR(50) DEFAULT NULL,
+    nama_referensi VARCHAR(100) DEFAULT NULL,
+    periode        VARCHAR(50) DEFAULT NULL,
+    alpha          FLOAT DEFAULT NULL,
+    hasil          INT DEFAULT NULL,
+    akurasi        FLOAT DEFAULT NULL,
+    mape           FLOAT DEFAULT NULL,
+    target_waktu   VARCHAR(50) DEFAULT NULL,
+    detail_json    LONGTEXT DEFAULT NULL
+)";
+if ($koneksi->query($sqlPeramalan) === TRUE) {
+    echo "<p>&#10004; Tabel <b>tbl_riwayat_peramalan</b> siap.</p>";
+} else {
+    echo "<p style='color:red;'>Error tbl_riwayat_peramalan: " . htmlspecialchars($koneksi->error) . "</p>";
+}
+
+// =============================================
+// 10. Seed Dummy Data tbl_barang (jika kosong)
 // =============================================
 $cekBarang = $koneksi->query("SELECT COUNT(*) as count FROM tbl_barang");
 $rowBarang  = $cekBarang->fetch_assoc();
