@@ -82,7 +82,7 @@ $hitung    = isset($_GET['kode_barang']) && $kode_barang !== '';
 // Ambil daftar barang
 $qB = get_query($conn, "SELECT kode_barang, nama_produk FROM tbl_barang ORDER BY nama_produk");
 
-// Logika Peramalan DES (Brown's Double Exponential Smoothing)
+// Logika Peramalan DES (Double exponential smoothing)
 $rows = [];
 $aktual = [];
 $S1 = []; // S'
@@ -193,7 +193,7 @@ if ($hitung) {
         $dataCukup = true;
         $aktual = array_map(function($item) { return (float)$item['total_qty']; }, $rows);
         
-        // Brown's Double Exponential Smoothing
+        // Double exponential smoothing
         $S1[0] = $aktual[0];
         $S2[0] = $aktual[0];
         $a[0]  = 2 * $S1[0] - $S2[0];
@@ -730,7 +730,7 @@ if ($hitung) {
                 Proyeksi Peramalan Masa Depan &amp; Detail Perhitungan DES
             </h3>
             <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
-                Brown's Double Exponential Smoothing (α = <?= $alpha ?>) &bull; Target: <strong><?= htmlspecialchars($label_target_detail) ?></strong>
+                Double exponential smoothing (α = <?= $alpha ?>) &bull; Target: <strong><?= htmlspecialchars($label_target_detail) ?></strong>
             </div>
         </div>
         <button type="button" onclick="document.getElementById('detailPerhitungan').style.display = 'none'" class="close-btn" style="background:transparent; border:none; font-size:18px; cursor:pointer; color:var(--text-muted); padding:4px 8px;" title="Tutup Detail">
@@ -1034,7 +1034,7 @@ if ($hitung) {
             <div style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:16px;">
                 <div style="font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
                     <i class="fa-solid fa-sliders" style="color:var(--primary-color);"></i>
-                    Parameter Model Brown's Double Exponential Smoothing
+                    Parameter Model Double exponential smoothing
                 </div>
                 <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; text-align:center;">
                     <div style="background:var(--bg-body); padding:10px; border-radius:8px;">
