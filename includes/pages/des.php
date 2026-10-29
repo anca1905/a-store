@@ -911,7 +911,7 @@ if ($hitung) {
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Waktu Hitung</th>
+                    <th>Waktu Acuan</th>
                     <th>Kode Barang</th>
                     <th>Nama Barang</th>
                     <th>Target Waktu</th>
@@ -929,9 +929,14 @@ if ($hitung) {
                 if($qHist && $qHist->num_rows > 0):
                     while($rh = $qHist->fetch_assoc()):
                         $riwayatDataStore[$rh['id_riwayat']] = $rh;
+                        $detRow = !empty($rh['detail_json']) ? json_decode($rh['detail_json'], true) : [];
+                        $targetTypeRow = $detRow['target_peramalan'] ?? (strpos($rh['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
+                        $jumlahTRow = $detRow['jumlah_target'] ?? 1;
+                        $tglARow = $detRow['tanggal_acuan'] ?? '';
+                        $waktuAcuanDisplay = !empty($tglARow) ? date('d/m/Y', strtotime($tglARow)) : date('d/m/Y', strtotime($rh['tanggal_hitung']));
                 ?>
                 <tr>
-                    <td><?= date('d/m/Y H:i', strtotime($rh['tanggal_hitung'])) ?></td>
+                    <td title="Waktu simpan: <?= date('d/m/Y H:i', strtotime($rh['tanggal_hitung'])) ?>"><?= $waktuAcuanDisplay ?></td>
                     <td><strong><?= htmlspecialchars($rh['referensi']) ?></strong></td>
                     <td><?= htmlspecialchars($rh['nama_referensi']) ?></td>
                     <td><span style="font-weight:600; color:var(--text-main);"><?= htmlspecialchars($rh['target_waktu']) ?></span></td>
@@ -939,10 +944,6 @@ if ($hitung) {
                     <td><?= $rh['alpha'] ?></td>
                     <td style="color:var(--primary-color); font-weight:bold;"><?= number_format($rh['hasil'],0,',','.') ?> Unit</td>
                     <?php
-                    $detRow = !empty($rh['detail_json']) ? json_decode($rh['detail_json'], true) : [];
-                    $targetTypeRow = $detRow['target_peramalan'] ?? (strpos($rh['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
-                    $jumlahTRow = $detRow['jumlah_target'] ?? 1;
-                    $tglARow = $detRow['tanggal_acuan'] ?? '';
                     $linkKalkulator = "?page=des&kode_barang=" . urlencode($rh['referensi']) . "&target_peramalan=" . urlencode($targetTypeRow) . "&jumlah_target=" . urlencode($jumlahTRow) . "&n_periode=" . urlencode($rh['periode']) . "&alpha=" . urlencode($rh['alpha']) . "&show_detail=1";
                     if ($tglARow) {
                         $linkKalkulator .= "&tanggal_acuan=" . urlencode($tglARow);
@@ -994,7 +995,7 @@ if ($hitung) {
                     Laporan Detail Riwayat Peramalan
                 </h3>
                 <div id="mdr_subtitle" style="font-size:12px; color:var(--text-muted); margin-top:3px;">
-                    Riwayat # &bull; Waktu Hitung: -
+                    Riwayat # &bull; Waktu Acuan: -
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -1172,7 +1173,25 @@ function bukaModalDetailRiwayat(id) {
         console.error("JSON parse error:", e);
     }
     
-    document.getElementById('mdr_subtitle').innerHTML = `Riwayat #${data.id_riwayat} &bull; Waktu Hitung: <strong>${data.tanggal_hitung}</strong>`;
+    let tglAcuanFormatted = '-';
+    if (detail && detail.tanggal_acuan) {
+        const parts = detail.tanggal_acuan.split('-');
+        if (parts.length === 3) {
+            tglAcuanFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+            tglAcuanFormatted = detail.tanggal_acuan;
+        }
+    } else if (data.tanggal_hitung) {
+        const tglOnly = data.tanggal_hitung.split(' ')[0];
+        const parts = tglOnly.split('-');
+        if (parts.length === 3) {
+            tglAcuanFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+            tglAcuanFormatted = tglOnly;
+        }
+    }
+    
+    document.getElementById('mdr_subtitle').innerHTML = `Riwayat #${data.id_riwayat} &bull; Waktu Acuan: <strong>${tglAcuanFormatted}</strong>`;
     document.getElementById('mdr_objek').textContent = data.nama_referensi;
     document.getElementById('mdr_kode').textContent = 'Kode Barang: ' + data.referensi;
     document.getElementById('mdr_target').textContent = data.target_waktu;
@@ -1375,6 +1394,24 @@ function cetakModalRiwayat() {
         }
     } catch(e) {}
     
+    let tglAcuanFormatted = '-';
+    if (detail && detail.tanggal_acuan) {
+        const parts = detail.tanggal_acuan.split('-');
+        if (parts.length === 3) {
+            tglAcuanFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+            tglAcuanFormatted = detail.tanggal_acuan;
+        }
+    } else if (data.tanggal_hitung) {
+        const tglOnly = data.tanggal_hitung.split(' ')[0];
+        const parts = tglOnly.split('-');
+        if (parts.length === 3) {
+            tglAcuanFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+            tglAcuanFormatted = tglOnly;
+        }
+    }
+    
     const printWin = window.open('', '_blank', 'width=950,height=750');
     if (!printWin) {
         showAlert('warning', 'Pop-up Diblokir', 'Izinkan pop-up peramban untuk mencetak laporan riwayat.');
@@ -1475,7 +1512,7 @@ function cetakModalRiwayat() {
             </div>
             <div style="text-align:right; font-size:11px; color:#64748b;">
                 ID Riwayat: <strong>#${data.id_riwayat}</strong><br>
-                Tanggal Hitung: <strong>${data.tanggal_hitung}</strong>
+                Waktu Acuan: <strong>${tglAcuanFormatted}</strong>
             </div>
         </div>
 

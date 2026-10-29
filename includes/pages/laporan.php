@@ -32,6 +32,22 @@ if ($tampil) {
         WHERE DATE_FORMAT(tanggal_waktu, '%Y-%m') = '$p'
         ORDER BY tanggal_waktu DESC
     ");
+
+    // Ambil rincian nama barang untuk semua transaksi pada periode ini
+    $itemsByTrx = [];
+    $qItems = get_query($conn, "
+        SELECT d.id_penjualan, d.kode_barang, COALESCE(b.nama_produk, d.kode_barang) AS nama_produk, d.qty, d.harga_satuan, d.subtotal
+        FROM tbl_detail_penjualan d
+        JOIN tbl_penjualan p ON d.id_penjualan = p.id_penjualan
+        LEFT JOIN tbl_barang b ON d.kode_barang = b.kode_barang
+        WHERE DATE_FORMAT(p.tanggal_waktu, '%Y-%m') = '$p'
+        ORDER BY d.id_detail ASC
+    ");
+    if ($qItems && $qItems->num_rows > 0) {
+        while ($it = $qItems->fetch_assoc()) {
+            $itemsByTrx[$it['id_penjualan']][] = $it;
+        }
+    }
 }
 
 // Nama bulan Indonesia
@@ -119,31 +135,59 @@ $labelPeriode = $tampil
             <table class="data-table" id="tabelLaporan">
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Tanggal Transaksi</th>
-                        <th>No Faktur</th>
-                        <th>Item</th>
-                        <th>Metode Bayar</th>
-                        <th>Total</th>
-                        <th class="no-print">Aksi</th>
+                        <th style="width: 45px; text-align: center;">No</th>
+                        <th style="width: 140px;">Tanggal Transaksi</th>
+                        <th style="width: 155px;">No Faktur</th>
+                        <th>Nama Barang</th>
+                        <th style="width: 85px; text-align: center;">Item</th>
+                        <th style="width: 110px;">Metode Bayar</th>
+                        <th style="width: 130px; text-align: right;">Total</th>
+                        <th class="no-print" style="width: 60px; text-align: center;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($qTrx && $qTrx->num_rows > 0):
                         $no = 1;
                         while ($row = $qTrx->fetch_assoc()):
+                            $idTrx = $row['id_penjualan'];
+                            $detailItems = $itemsByTrx[$idTrx] ?? [];
                     ?>
                     <tr>
-                        <td><?= $no++ ?></td>
+                        <td style="text-align: center;"><?= $no++ ?></td>
                         <td><?= date('d M Y H:i', strtotime($row['tanggal_waktu'])) ?></td>
                         <td><strong><?= htmlspecialchars($row['no_faktur']) ?></strong></td>
-                        <td><?= $row['total_item'] ?> pcs</td>
+                        <td>
+                            <?php if (!empty($detailItems)): ?>
+                                <?php if (count($detailItems) === 1): 
+                                    $it = $detailItems[0];
+                                ?>
+                                    <div class="item-single">
+                                        <span style="font-weight: 600;"><?= htmlspecialchars($it['nama_produk']) ?></span>
+                                        <?php if ($it['qty'] > 1): ?>
+                                            <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">(<?= (int)$it['qty'] ?> pcs)</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <ul class="item-list-laporan" style="margin: 0; padding-left: 16px; list-style-type: disc;">
+                                        <?php foreach ($detailItems as $it): ?>
+                                            <li style="margin-bottom: 2px;">
+                                                <span style="font-weight: 600;"><?= htmlspecialchars($it['nama_produk']) ?></span>
+                                                <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">(<?= (int)$it['qty'] ?> pcs)</span>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span style="color: var(--text-muted); font-style: italic;">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="text-align: center;"><?= $row['total_item'] ?> pcs</td>
                         <td><?= htmlspecialchars($row['metode_pembayaran'] ?? 'Cash') ?></td>
-                        <td style="font-weight:700; color:var(--primary-color);">
+                        <td style="font-weight: 700; color: var(--primary-color); text-align: right;">
                             Rp <?= number_format($row['grand_total'], 0, ',', '.') ?>
                         </td>
-                        <td class="no-print">
-                            <button class="btn-action-icon" style="background:var(--primary-color);"
+                        <td class="no-print" style="text-align: center;">
+                            <button class="btn-action-icon" style="background: var(--primary-color);"
                                     onclick="lihatDetail(<?= $row['id_penjualan'] ?>, '<?= htmlspecialchars($row['no_faktur'], ENT_QUOTES) ?>')"
                                     title="Lihat Detail">
                                 <i class="fa-solid fa-eye"></i>
@@ -152,8 +196,8 @@ $labelPeriode = $tampil
                     </tr>
                     <?php endwhile; else: ?>
                     <tr>
-                        <td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">
-                            <i class="fa-solid fa-inbox" style="font-size:28px; display:block; margin-bottom:8px; opacity:0.4;"></i>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fa-solid fa-inbox" style="font-size: 28px; display: block; margin-bottom: 8px; opacity: 0.4;"></i>
                             Tidak ada transaksi pada periode <?= htmlspecialchars($labelPeriode) ?>.
                         </td>
                     </tr>
@@ -219,12 +263,16 @@ $labelPeriode = $tampil
         .no-print { display: none !important; }
 
         /* Tabel rapih untuk cetak */
-        .data-table { border-collapse: collapse; width: 100%; font-size: 13px !important; color: #000 !important; }
-        .data-table th, .data-table td { border: 1px solid #000 !important; padding: 10px !important; color: #000 !important; }
+        .data-table { border-collapse: collapse; width: 100%; font-size: 11.5px !important; color: #000 !important; }
+        .data-table th, .data-table td { border: 1px solid #000 !important; padding: 6px 8px !important; color: #000 !important; }
         .data-table th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; color-adjust: exact; font-weight: bold !important; text-transform: uppercase; }
         
         /* Remove status color styling on print to keep it formal */
-        .data-table td[style] { color: #000 !important; font-weight: normal !important; }
+        .data-table td[style] { color: #000 !important; }
+
+        .item-list-laporan { margin: 0 !important; padding-left: 14px !important; list-style-type: disc !important; }
+        .item-list-laporan li { margin-bottom: 2px !important; color: #000 !important; }
+        .item-list-laporan span, .item-single span { color: #000 !important; }
     }
 </style>
 
