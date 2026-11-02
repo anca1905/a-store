@@ -37,8 +37,15 @@ while($rk = $qKategori->fetch_assoc()) {
                         <input type="text" id="searchInput" class="form-control" placeholder="Kode barang / nama barang" autocomplete="off" style="padding-left:38px; border-radius:24px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
                     </div>
                 </div>
-                <div style="padding:10px 16px; background:#fff; border:1px solid var(--border-color); border-radius:24px; font-size:13px; font-weight:700; color:var(--text-main);">
-                    Produk (<span id="totalProdukTersedia"><?= count($barang_array) ?></span>)
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <?php if (isPimpinan()): ?>
+                    <a href="?page=barang" class="btn btn-outline" style="border-radius:24px; font-size:12.5px; padding:8px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-plus-circle" style="color:var(--primary-color);"></i> Tambah Barang Baru
+                    </a>
+                    <?php endif; ?>
+                    <div style="padding:10px 16px; background:#fff; border:1px solid var(--border-color); border-radius:24px; font-size:13px; font-weight:700; color:var(--text-main);">
+                        Produk (<span id="totalProdukTersedia"><?= count($barang_array) ?></span>)
+                    </div>
                 </div>
             </div>
 
@@ -228,7 +235,7 @@ function renderProducts(products) {
     document.getElementById('totalProdukTersedia').innerText = products.length;
     
     if(products.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-box-open" style="font-size:32px; opacity:0.3; margin-bottom:12px; display:block;"></i>Barang tidak ditemukan.</div>';
+        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-box-open" style="font-size:32px; opacity:0.3; margin-bottom:12px; display:block;"></i>Barang tidak ditemukan atau stok 0.<br><a href="?page=barang" style="display:inline-block; margin-top:8px; color:var(--primary-color); font-weight:600; font-size:13px; text-decoration:underline;">+ Daftarkan Barang Baru di Data Barang</a></div>';
         return;
     }
 
