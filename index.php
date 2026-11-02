@@ -284,7 +284,7 @@ if ($qKatImg) {
 
 
 // ─── Definisi halaman per role ───────────────────────────────────────
-$pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'des_kategori', 'pengaturan', 'historis', 'riwayat_transaksi'];
+$pagesForPimpinan = ['dashboard', 'barang', 'kategori', 'kelola_kasir', 'stok', 'riwayat_stok', 'laporan', 'des', 'des_kategori', 'pengaturan', 'historis', 'riwayat_transaksi', 'penjualan'];
 $pagesForKasir    = ['dashboard', 'penjualan', 'riwayat_transaksi', 'data_barang_kasir', 'stok_barang'];
 
 $allValidPages = array_merge($pagesForPimpinan, $pagesForKasir);
@@ -653,9 +653,13 @@ if (isset($_GET['ajax_detail'])) {
                     </a>
 
                     <div class="nav-group-label">Transaksi</div>
+                    <a href="?page=penjualan" class="nav-item <?= $page === 'penjualan' ? 'active' : '' ?>">
+                        <i class="fa-solid fa-cash-register"></i>
+                        <span>Input Penjualan (Kasir)</span>
+                    </a>
                     <a href="?page=riwayat_transaksi" class="nav-item <?= $page === 'riwayat_transaksi' ? 'active' : '' ?>">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <span>Penjualan</span>
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Kelola Penjualan</span>
                     </a>
                     <a href="?page=historis" class="nav-item <?= $page === 'historis' ? 'active' : '' ?>">
                         <i class="fa-solid fa-chart-column"></i>

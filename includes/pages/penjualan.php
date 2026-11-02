@@ -80,6 +80,21 @@ while($rk = $qKategori->fetch_assoc()) {
                 <input type="hidden" name="total_item" id="inputTotalItem" value="0">
                 <input type="hidden" name="kembalian" id="inputKembalianValue" value="0">
 
+                <?php if (isPimpinan()): ?>
+                <div style="margin-bottom:14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--text-main);">
+                            <i class="fa-solid fa-calendar-day" style="color:var(--primary-color); margin-right:4px;"></i> Tanggal Transaksi (Admin)
+                        </label>
+                        <span style="font-size:10px; background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-weight:600;">Kelola Backdate</span>
+                    </div>
+                    <input type="datetime-local" name="tanggal_waktu" class="form-control" value="<?= date('Y-m-d\TH:i') ?>" style="font-size:13px; padding:8px 10px; background:#fff; font-weight:600;">
+                    <small style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;">
+                        Ubah tanggal ini jika Anda menginput penjualan lampau (misal: transaksi bulan Oktober 2026).
+                    </small>
+                </div>
+                <?php endif; ?>
+
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; font-size:15px; font-weight:800;">
                     <span>Total Belanja</span>
                     <span id="txtTotal" style="color:var(--primary-color); font-size:18px;">Rp 0</span>

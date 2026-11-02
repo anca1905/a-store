@@ -142,7 +142,7 @@ $labelPeriode = $tampil
                         <th style="width: 85px; text-align: center;">Item</th>
                         <th style="width: 110px;">Metode Bayar</th>
                         <th style="width: 130px; text-align: right;">Total</th>
-                        <th class="no-print" style="width: 60px; text-align: center;">Aksi</th>
+                        <th class="no-print" style="width: 110px; text-align: center;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -151,6 +151,7 @@ $labelPeriode = $tampil
                         while ($row = $qTrx->fetch_assoc()):
                             $idTrx = $row['id_penjualan'];
                             $detailItems = $itemsByTrx[$idTrx] ?? [];
+                            $tglRaw = date('Y-m-d\TH:i', strtotime($row['tanggal_waktu']));
                     ?>
                     <tr>
                         <td style="text-align: center;"><?= $no++ ?></td>
@@ -186,11 +187,21 @@ $labelPeriode = $tampil
                         <td style="font-weight: 700; color: var(--primary-color); text-align: right;">
                             Rp <?= number_format($row['grand_total'], 0, ',', '.') ?>
                         </td>
-                        <td class="no-print" style="text-align: center;">
+                        <td class="no-print" style="text-align: center; white-space: nowrap;">
                             <button class="btn-action-icon" style="background: var(--primary-color);"
                                     onclick="lihatDetail(<?= $row['id_penjualan'] ?>, '<?= htmlspecialchars($row['no_faktur'], ENT_QUOTES) ?>')"
-                                    title="Lihat Detail">
+                                    title="Lihat Detail Struk">
                                 <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button class="btn-action-icon" style="background: #f59e0b;"
+                                    onclick="bukaModalEditTanggal(<?= $row['id_penjualan'] ?>, '<?= htmlspecialchars($row['no_faktur'], ENT_QUOTES) ?>', '<?= $tglRaw ?>')"
+                                    title="Ubah Tanggal Transaksi (Admin)">
+                                <i class="fa-solid fa-calendar-days"></i>
+                            </button>
+                            <button class="btn-action-icon" style="background: #ef4444;"
+                                    onclick="hapusPenjualan(<?= $row['id_penjualan'] ?>, '<?= htmlspecialchars($row['no_faktur'], ENT_QUOTES) ?>')"
+                                    title="Hapus Transaksi (Admin)">
+                                <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </td>
                     </tr>
@@ -237,6 +248,52 @@ $labelPeriode = $tampil
         <div id="detailTrxBody" style="min-height:80px; display:flex; align-items:center; justify-content:center;">
             <i class="fa-solid fa-spinner fa-spin"></i>
         </div>
+    </div>
+</div>
+
+<!-- Modal Ubah Tanggal Transaksi (Khusus Admin/Pimpinan) -->
+<div id="modalEditTanggal" class="modal">
+    <div class="modal-content" style="max-width:440px;">
+        <div class="modal-header">
+            <h3 style="font-size:16px; font-weight:700;">
+                <i class="fa-solid fa-calendar-days" style="color:var(--primary-color); margin-right:6px;"></i> Ubah Tanggal Penjualan
+            </h3>
+            <button class="close-btn" onclick="closeModal('modalEditTanggal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <form action="action_penjualan.php" method="POST" id="formEditTanggal">
+            <input type="hidden" name="action" value="update_tanggal">
+            <input type="hidden" name="id_penjualan" id="editTglId">
+            <input type="hidden" name="redirect_url" id="editTglRedirect">
+            
+            <div style="padding:16px 20px;">
+                <div style="margin-bottom:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px;">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase;">No. Faktur</div>
+                    <div id="editTglFaktur" style="font-size:15px; font-weight:700; color:#0f172a;"></div>
+                </div>
+                
+                <div style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700; font-size:13px; margin-bottom:6px;">Tanggal & Waktu Baru</label>
+                    <input type="datetime-local" name="tanggal_waktu" id="editTglInput" class="form-control" required style="font-size:14px; padding:10px; font-weight:600;">
+                    <small style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;">
+                        Pilih tanggal sebenarnya saat transaksi terjadi (misal: mundur ke bulan Oktober).
+                    </small>
+                </div>
+                
+                <div style="margin-bottom:8px;">
+                    <label style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; cursor:pointer; line-height:1.4;">
+                        <input type="checkbox" name="sesuaikan_faktur" value="1" checked style="margin-top:2px;">
+                        <span>Sesuaikan kode bulan pada No Faktur (contoh: <code>INV-202610-xxxx</code> jika tanggal dipindah ke Oktober).</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modalEditTanggal')">Batal</button>
+                <button type="submit" class="btn btn-primary" style="background:#000; border:none;">
+                    <i class="fa-solid fa-save"></i> Simpan Tanggal
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -289,5 +346,59 @@ function lihatDetail(idTrx, noFaktur) {
     fetch('?page=laporan&periode=<?= htmlspecialchars($periode) ?>&ajax_detail=' + idTrx)
         .then(r => r.text())
         .then(html => { document.getElementById('detailTrxBody').innerHTML = html; });
+}
+
+function bukaModalEditTanggal(id, noFaktur, tglWaktu) {
+    document.getElementById('editTglId').value = id;
+    document.getElementById('editTglFaktur').textContent = noFaktur;
+    document.getElementById('editTglInput').value = tglWaktu;
+    document.getElementById('editTglRedirect').value = window.location.href;
+    openModal('modalEditTanggal');
+}
+
+function hapusPenjualan(id, noFaktur) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Hapus Transaksi?',
+            html: `Yakin ingin menghapus transaksi <strong>${noFaktur}</strong>?<br><br>` +
+                  `<label style="font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">` +
+                  `<input type="checkbox" id="swalKembalikanStok" checked> Kembalikan stok barang yang terjual</label>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const kembalikan = document.getElementById('swalKembalikanStok').checked ? 1 : 0;
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'action_penjualan.php';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="hapus_transaksi">
+                    <input type="hidden" name="id_penjualan" value="${id}">
+                    <input type="hidden" name="kembalikan_stok" value="${kembalikan}">
+                    <input type="hidden" name="redirect_url" value="${encodeURI(window.location.href)}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    } else {
+        if (confirm(`Yakin ingin menghapus transaksi ${noFaktur}?`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'action_penjualan.php';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="hapus_transaksi">
+                <input type="hidden" name="id_penjualan" value="${id}">
+                <input type="hidden" name="kembalikan_stok" value="1">
+                <input type="hidden" name="redirect_url" value="${encodeURI(window.location.href)}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
 }
 </script>
