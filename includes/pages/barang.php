@@ -133,10 +133,6 @@ while ($rk = $qKat->fetch_assoc()) {
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-outline" style="padding:8px 16px;">
-                        <i class="fa-solid fa-filter"></i> Terapkan
-                    </button>
-
                     <?php if ($cari !== '' || ($filterKat !== '' && $filterKat !== 'all') || $filterStok !== '' || ($urutan !== 'terbaru' && $urutan !== '')): ?>
                     <a href="?page=barang" class="btn btn-outline" style="padding:8px 14px; color:#ef4444; border-color:#fca5a5;" title="Reset semua filter">
                         <i class="fa-solid fa-rotate-left"></i> Reset
