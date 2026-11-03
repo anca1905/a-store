@@ -1,17 +1,69 @@
 <?php
 // Halaman: Data Barang (Pimpinan)
-$cari = $conn->real_escape_string($_GET['cari'] ?? '');
-$sql  = "SELECT b.*, k.nama_kategori FROM tbl_barang b LEFT JOIN tbl_kategori k ON b.kategori = k.nama_kategori";
+$cari       = trim($_GET['cari'] ?? '');
+$filterKat  = trim($_GET['kategori'] ?? '');
+$filterStok = trim($_GET['status_stok'] ?? '');
+$urutan     = trim($_GET['urutan'] ?? 'terbaru');
+
+$where = [];
 if ($cari !== '') {
-    $sql .= " WHERE b.kode_barang LIKE '%$cari%' OR b.nama_produk LIKE '%$cari%' OR b.kategori LIKE '%$cari%'";
+    $cEsc = $conn->real_escape_string($cari);
+    $where[] = "(b.kode_barang LIKE '%$cEsc%' OR b.nama_produk LIKE '%$cEsc%' OR b.kategori LIKE '%$cEsc%')";
 }
-$sql  .= " ORDER BY b.id_barang DESC";
+if ($filterKat !== '' && $filterKat !== 'all') {
+    $kEsc = $conn->real_escape_string($filterKat);
+    $where[] = "b.kategori = '$kEsc'";
+}
+if ($filterStok === 'kritis') {
+    $where[] = "b.stok_aktual <= b.stok_min AND b.stok_aktual > 0";
+} elseif ($filterStok === 'habis') {
+    $where[] = "b.stok_aktual <= 0";
+} elseif ($filterStok === 'aman') {
+    $where[] = "b.stok_aktual > b.stok_min";
+}
+
+$orderBy = "b.id_barang DESC";
+if ($urutan === 'nama_asc') {
+    $orderBy = "b.nama_produk ASC";
+} elseif ($urutan === 'nama_desc') {
+    $orderBy = "b.nama_produk DESC";
+} elseif ($urutan === 'harga_asc') {
+    $orderBy = "b.harga_jual ASC";
+} elseif ($urutan === 'harga_desc') {
+    $orderBy = "b.harga_jual DESC";
+} elseif ($urutan === 'stok_asc') {
+    $orderBy = "b.stok_aktual ASC";
+} elseif ($urutan === 'stok_desc') {
+    $orderBy = "b.stok_aktual DESC";
+}
+
+$sql = "SELECT b.*, k.nama_kategori FROM tbl_barang b LEFT JOIN tbl_kategori k ON b.kategori = k.nama_kategori";
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
+$sql .= " ORDER BY " . $orderBy;
 $query = get_query($conn, $sql);
 
-// Daftar kategori untuk dropdown
-$qKat = get_query($conn, "SELECT nama_kategori FROM tbl_kategori ORDER BY nama_kategori ASC");
+// Daftar kategori dan jumlah barang untuk filter dropdown & pills
+$qKatCounts = get_query($conn, "
+    SELECT COALESCE(NULLIF(TRIM(kategori), ''), 'Lainnya') AS kat_nama, COUNT(*) AS total
+    FROM tbl_barang
+    GROUP BY kat_nama
+    ORDER BY kat_nama ASC
+");
+$kategoriCounts = [];
+$totalSemuaBarang = 0;
+while ($rk = $qKatCounts->fetch_assoc()) {
+    $kategoriCounts[] = $rk;
+    $totalSemuaBarang += (int)$rk['total'];
+}
+
+// Daftar kategori lengkap untuk modal Tambah & Edit
+$qKat = get_query($conn, "SELECT DISTINCT kategori FROM tbl_barang WHERE kategori IS NOT NULL AND kategori != '' UNION SELECT nama_kategori AS kategori FROM tbl_kategori WHERE nama_kategori IS NOT NULL AND nama_kategori != '' ORDER BY kategori ASC");
 $listKategori = [];
-while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
+while ($rk = $qKat->fetch_assoc()) {
+    if (!empty($rk['kategori'])) $listKategori[] = $rk['kategori'];
+}
 ?>
 
 <div class="dashboard-content-wrapper">
@@ -28,26 +80,113 @@ while ($rk = $qKat->fetch_assoc()) $listKategori[] = $rk['nama_kategori'];
     </noscript>
 
     <div class="chart-card">
-        <!-- Action Bar -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-            <form action="" method="GET" style="display:flex; gap:8px; align-items:center;">
-                <input type="hidden" name="page" value="barang">
-                <div class="search-bar" style="background:#fff; border:1px solid var(--border-color); width:260px; margin-bottom:0;">
-                    <i class="fa-solid fa-search"></i>
-                    <input type="text" name="cari" placeholder="Cari barang..." value="<?= htmlspecialchars($cari) ?>">
+        <!-- Filter & Action Bar -->
+        <form action="" method="GET" id="formFilterBarang" style="display:flex; flex-direction:column; gap:14px; margin-bottom:20px;">
+            <input type="hidden" name="page" value="barang">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <!-- Filter Controls (Search, Kategori, Stok, Urutan) -->
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; flex:1;">
+                    <!-- Search Bar -->
+                    <div class="search-bar" style="background:#fff; border:1px solid var(--border-color); width:230px; margin-bottom:0; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" name="cari" id="inputCariBarang" placeholder="Cari nama / kode..." value="<?= htmlspecialchars($cari) ?>" autocomplete="off">
+                        <?php if ($cari !== ''): ?>
+                        <button type="button" onclick="document.getElementById('inputCariBarang').value=''; document.getElementById('formFilterBarang').submit();" style="border:none; background:transparent; cursor:pointer; color:#94a3b8; padding:0 6px;" title="Hapus teks pencarian">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Dropdown Filter Kategori -->
+                    <div style="min-width:160px;">
+                        <select name="kategori" id="selectKategori" class="form-control" onchange="this.form.submit()" style="font-size:13px; font-weight:600; padding:8px 12px; height:auto; cursor:pointer; border-radius:8px;">
+                            <option value="">Semua Kategori (<?= $totalSemuaBarang ?>)</option>
+                            <?php foreach ($kategoriCounts as $kc): ?>
+                            <option value="<?= htmlspecialchars($kc['kat_nama']) ?>" <?= ($filterKat === $kc['kat_nama']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($kc['kat_nama']) ?> (<?= $kc['total'] ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Dropdown Filter Status Stok -->
+                    <div style="min-width:145px;">
+                        <select name="status_stok" id="selectStatusStok" class="form-control" onchange="this.form.submit()" style="font-size:13px; font-weight:600; padding:8px 12px; height:auto; cursor:pointer; border-radius:8px;">
+                            <option value="">Semua Status Stok</option>
+                            <option value="aman" <?= $filterStok === 'aman' ? 'selected' : '' ?>>Stok Aman</option>
+                            <option value="kritis" <?= $filterStok === 'kritis' ? 'selected' : '' ?>>Stok Menipis (Kritis)</option>
+                            <option value="habis" <?= $filterStok === 'habis' ? 'selected' : '' ?>>Stok Habis (0)</option>
+                        </select>
+                    </div>
+
+                    <!-- Dropdown Urutkan -->
+                    <div style="min-width:150px;">
+                        <select name="urutan" id="selectUrutan" class="form-control" onchange="this.form.submit()" style="font-size:13px; font-weight:600; padding:8px 12px; height:auto; cursor:pointer; border-radius:8px;">
+                            <option value="terbaru" <?= $urutan === 'terbaru' ? 'selected' : '' ?>>Terbaru Ditambahkan</option>
+                            <option value="nama_asc" <?= $urutan === 'nama_asc' ? 'selected' : '' ?>>Nama: A - Z</option>
+                            <option value="nama_desc" <?= $urutan === 'nama_desc' ? 'selected' : '' ?>>Nama: Z - A</option>
+                            <option value="stok_asc" <?= $urutan === 'stok_asc' ? 'selected' : '' ?>>Stok: Sedikit ke Banyak</option>
+                            <option value="stok_desc" <?= $urutan === 'stok_desc' ? 'selected' : '' ?>>Stok: Banyak ke Sedikit</option>
+                            <option value="harga_asc" <?= $urutan === 'harga_asc' ? 'selected' : '' ?>>Harga: Termurah</option>
+                            <option value="harga_desc" <?= $urutan === 'harga_desc' ? 'selected' : '' ?>>Harga: Termahal</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-outline" style="padding:8px 16px;">
+                        <i class="fa-solid fa-filter"></i> Terapkan
+                    </button>
+
+                    <?php if ($cari !== '' || ($filterKat !== '' && $filterKat !== 'all') || $filterStok !== '' || ($urutan !== 'terbaru' && $urutan !== '')): ?>
+                    <a href="?page=barang" class="btn btn-outline" style="padding:8px 14px; color:#ef4444; border-color:#fca5a5;" title="Reset semua filter">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </a>
+                    <?php endif; ?>
                 </div>
-                <button type="submit" class="btn btn-outline" style="padding:9px 14px;">Cari</button>
-            </form>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <button type="button" class="btn btn-outline" id="btnToggleHargaBeli" onclick="toggleAllHargaBeli()" style="padding:9px 14px; display:inline-flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-eye" id="iconToggleHargaBeli"></i>
-                    <span id="labelToggleHargaBeli">Tampilkan Harga Beli</span>
-                </button>
-                <button class="btn btn-primary" onclick="openModal('modalTambah')">
-                    <i class="fa-solid fa-plus"></i> Tambah Barang
-                </button>
+
+                <!-- Action Buttons (Toggle Harga Beli & Tambah Barang) -->
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button type="button" class="btn btn-outline" id="btnToggleHargaBeli" onclick="toggleAllHargaBeli()" style="padding:8px 14px; display:inline-flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-eye" id="iconToggleHargaBeli"></i>
+                        <span id="labelToggleHargaBeli">Tampilkan Harga Beli</span>
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="openModal('modalTambah')" style="padding:8px 16px;">
+                        <i class="fa-solid fa-plus"></i> Tambah Barang
+                    </button>
+                </div>
             </div>
-        </div>
+
+            <!-- Quick Category Filter Pills -->
+            <div class="category-filter-bar">
+                <button type="button" class="cat-pill <?= ($filterKat === '' || $filterKat === 'all') ? 'active' : '' ?>" onclick="pilihKategoriPill('')">
+                    <i class="fa-solid fa-border-all" style="font-size:11px; margin-right:6px;"></i> Semua (<?= $totalSemuaBarang ?>)
+                </button>
+                <?php foreach ($kategoriCounts as $kc): ?>
+                <button type="button" class="cat-pill <?= ($filterKat === $kc['kat_nama']) ? 'active' : '' ?>" onclick="pilihKategoriPill('<?= htmlspecialchars(addslashes($kc['kat_nama'])) ?>')">
+                    <?= htmlspecialchars($kc['kat_nama']) ?> <span style="font-size:11px; opacity:0.75; margin-left:4px;">(<?= $kc['total'] ?>)</span>
+                </button>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Info Bar Jumlah Data yang Tampil -->
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; color:var(--text-muted); border-top:1px dashed var(--border-color); padding-top:10px;">
+                <div>
+                    Menampilkan <strong style="color:var(--text-main);"><?= $query ? $query->num_rows : 0 ?></strong> barang
+                    <?php if ($filterKat !== '' && $filterKat !== 'all'): ?>
+                        pada kategori <span class="badge-filter">Kategori: <?= htmlspecialchars($filterKat) ?></span>
+                    <?php endif; ?>
+                    <?php if ($filterStok !== ''): ?>
+                        <span class="badge-filter">Stok: <?= htmlspecialchars(ucfirst($filterStok)) ?></span>
+                    <?php endif; ?>
+                    <?php if ($cari !== ''): ?>
+                        dengan kata kunci <span class="badge-filter">"<?= htmlspecialchars($cari) ?>"</span>
+                    <?php endif; ?>
+                </div>
+                <div style="font-size:11.5px; color:var(--text-muted);">
+                    <i class="fa-solid fa-keyboard" style="opacity:0.6; margin-right:4px;"></i> Ketik di kolom pencarian untuk filter instan
+                </div>
+            </div>
+        </form>
 
         <!-- Tabel -->
         <div class="table-responsive">
@@ -454,5 +593,89 @@ function editBarang(data) {
 }
 
 // Jalankan saat halaman selesai dimuat
-document.addEventListener('DOMContentLoaded', updateHargaBeliDisplay);
+document.addEventListener('DOMContentLoaded', function() {
+    updateHargaBeliDisplay();
+
+    // Filter instan saat mengetik di input pencarian
+    const inputCari = document.getElementById('inputCariBarang');
+    if (inputCari) {
+        inputCari.addEventListener('input', function() {
+            const val = this.value.toLowerCase().trim();
+            const rows = document.querySelectorAll('.data-table tbody tr');
+            let foundCount = 0;
+            rows.forEach(row => {
+                if (row.cells.length <= 1) return; // lewati row kosong
+                const text = row.innerText.toLowerCase();
+                const match = (!val || text.includes(val));
+                row.style.display = match ? '' : 'none';
+                if (match) foundCount++;
+            });
+        });
+    }
+});
+
+function pilihKategoriPill(kat) {
+    const sel = document.getElementById('selectKategori');
+    if (sel) {
+        sel.value = kat;
+        document.getElementById('formFilterBarang').submit();
+    }
+}
 </script>
+
+<style>
+.category-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 2px 8px 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.category-filter-bar::-webkit-scrollbar { height: 4px; }
+.category-filter-bar::-webkit-scrollbar-track { background: transparent; }
+.category-filter-bar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.category-filter-bar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.cat-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    font-family: inherit;
+    user-select: none;
+}
+.cat-pill:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+.cat-pill.active {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.badge-filter {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 11.5px;
+    margin: 0 2px;
+    display: inline-block;
+}
+</style>
