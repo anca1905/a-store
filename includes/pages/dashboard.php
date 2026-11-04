@@ -30,9 +30,9 @@ $prediksiMingguDepan = round($totalQty28 / 4);
 $tglDari   = trim($_GET['tgl_dari'] ?? '');
 $tglSampai = trim($_GET['tgl_sampai'] ?? '');
 
-// Default rentang waktu: 7 hari terakhir
+// Default rentang waktu: bulan berjalan (1 sampai hari ini)
 if ($tglDari === '' || $tglSampai === '') {
-    $tglDari   = date('Y-m-d', strtotime('-6 days'));
+    $tglDari   = date('Y-m-01');
     $tglSampai = date('Y-m-d');
 }
 
@@ -241,21 +241,27 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
                     </div>
                 </div>
 
-                <!-- Form Filter Rentang Waktu -->
-                <form method="GET" action="" id="formFilterRentang" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <!-- Form Filter Rentang Waktu (Sesuai Format Tampilan Riwayat) -->
+                <form method="GET" action="" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
                     <input type="hidden" name="page" value="dashboard">
-                    <div style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--border-color); padding:4px 10px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
-                        <i class="fa-solid fa-calendar-days" style="color:var(--text-muted); font-size:12.5px;"></i>
-                        <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Rentang:</span>
-                        <input type="date" name="tgl_dari" id="filterTglDari" value="<?= htmlspecialchars($tglDari) ?>" class="form-control" style="border:none; padding:2px 0; font-size:12.5px; width:125px; height:auto; box-shadow:none; cursor:pointer;" onchange="autoSubmitRentang()">
-                        <span style="color:var(--text-muted); font-size:12px; font-weight:600;">s/d</span>
-                        <input type="date" name="tgl_sampai" id="filterTglSampai" value="<?= htmlspecialchars($tglSampai) ?>" class="form-control" style="border:none; padding:2px 0; font-size:12.5px; width:125px; height:auto; box-shadow:none; cursor:pointer;" onchange="autoSubmitRentang()">
+                    <div>
+                        <label class="form-label" style="font-size:12px; font-weight:700; margin-bottom:4px; display:block; color:var(--text-main);">Dari Tanggal</label>
+                        <input type="date" name="tgl_dari" class="form-control" value="<?= htmlspecialchars($tglDari) ?>" style="font-size:13px; border-radius:8px;">
                     </div>
-                    <?php if (isset($_GET['tgl_dari']) || isset($_GET['tgl_sampai'])): ?>
-                    <a href="?page=dashboard" class="btn btn-outline" style="padding:5px 10px; font-size:12px; color:#ef4444; border-color:#fca5a5;" title="Kembali ke 7 hari terakhir">
-                        <i class="fa-solid fa-rotate-left"></i> Reset
-                    </a>
-                    <?php endif; ?>
+                    <div>
+                        <label class="form-label" style="font-size:12px; font-weight:700; margin-bottom:4px; display:block; color:var(--text-main);">Sampai Tanggal</label>
+                        <input type="date" name="tgl_sampai" class="form-control" value="<?= htmlspecialchars($tglSampai) ?>" style="font-size:13px; border-radius:8px;">
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="submit" class="btn btn-primary" style="padding:8px 16px; font-size:13px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-search"></i> Tampilkan
+                        </button>
+                        <?php if (isset($_GET['tgl_dari']) || isset($_GET['tgl_sampai'])): ?>
+                        <a href="?page=dashboard" class="btn btn-outline" style="padding:8px 12px; font-size:13px; color:#ef4444; border-color:#fca5a5; border-radius:8px;" title="Reset filter">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </form>
             </div>
 
@@ -344,18 +350,6 @@ function toggleSensitiveValues() {
     applySensitiveState();
     if (window.salesChartInstance) {
         window.salesChartInstance.update();
-    }
-}
-
-// Otomatis submit form rentang waktu saat tanggal diubah
-function autoSubmitRentang() {
-    const dari = document.getElementById('filterTglDari').value;
-    const sampai = document.getElementById('filterTglSampai').value;
-    if (dari && sampai) {
-        if (dari > sampai) {
-            document.getElementById('filterTglSampai').value = dari;
-        }
-        document.getElementById('formFilterRentang').submit();
     }
 }
 
