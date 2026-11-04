@@ -26,253 +26,86 @@ $qPrediksi = get_query($conn, "
 $totalQty28 = $qPrediksi->fetch_assoc()['total_qty'];
 $prediksiMingguDepan = round($totalQty28 / 4);
 
-// Data nama bulan Indonesia
-$namaBulanIndo = [
-    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-    5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-    9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-];
+// Parameter Filter Rentang Waktu
+$tglDari   = trim($_GET['tgl_dari'] ?? '');
+$tglSampai = trim($_GET['tgl_sampai'] ?? '');
 
-// Ambil riwayat bulan & tahun yang tersedia di tbl_penjualan
-$qMonthsDB = get_query($conn, "
-    SELECT DISTINCT DATE_FORMAT(tanggal_waktu, '%Y-%m') as ym,
-           YEAR(tanggal_waktu) as thn,
-           MONTH(tanggal_waktu) as bln,
-           COUNT(*) as jml
-    FROM tbl_penjualan
-    WHERE tanggal_waktu IS NOT NULL
-    GROUP BY ym, thn, bln
-    ORDER BY ym DESC
-");
-$listBulanDB = [];
-$listTahunDB = [];
-while ($rm = $qMonthsDB->fetch_assoc()) {
-    $blnIndo = $namaBulanIndo[(int)$rm['bln']] ?? $rm['bln'];
-    $listBulanDB[] = [
-        'ym'    => $rm['ym'],
-        'label' => $blnIndo . ' ' . $rm['thn'],
-        'thn'   => (int)$rm['thn'],
-        'bln'   => (int)$rm['bln'],
-        'jml'   => (int)$rm['jml']
-    ];
-    if (!in_array((int)$rm['thn'], $listTahunDB)) {
-        $listTahunDB[] = (int)$rm['thn'];
-    }
-}
-$curYear = (int)date('Y');
-if (!in_array($curYear, $listTahunDB)) {
-    array_unshift($listTahunDB, $curYear);
+// Default rentang waktu: 7 hari terakhir
+if ($tglDari === '' || $tglSampai === '') {
+    $tglDari   = date('Y-m-d', strtotime('-6 days'));
+    $tglSampai = date('Y-m-d');
 }
 
-// Parameter Filter Grafik
-$filterPeriode = trim($_GET['periode'] ?? '7hari');
-$tglMulai      = trim($_GET['tgl_mulai'] ?? '');
-$tglSelesai    = trim($_GET['tgl_selesai'] ?? '');
+// Pastikan urutan tanggal valid
+if ($tglDari > $tglSampai) {
+    $temp = $tglDari;
+    $tglDari = $tglSampai;
+    $tglSampai = $temp;
+}
 
-$labelsChart   = [];
-$salesChart    = [];
-$chartType     = 'line';
-$rataUnit      = 'hari';
-$badgePeriode  = '7 Hari Terakhir';
-$dateStartCond = '';
-$dateEndCond   = '';
+$tglDariEsc   = $conn->real_escape_string($tglDari);
+$tglSampaiEsc = $conn->real_escape_string($tglSampai);
+$dateStartCond = $tglDariEsc . ' 00:00:00';
+$dateEndCond   = $tglSampaiEsc . ' 23:59:59';
 
-if (strpos($filterPeriode, 'm_') === 0) {
-    // Mode Bulan Tertentu (contoh: m_2026-09)
-    $ym = substr($filterPeriode, 2);
-    $parts = explode('-', $ym);
-    $thn = (int)($parts[0] ?? date('Y'));
-    $bln = (int)($parts[1] ?? date('m'));
-    $totalDays = cal_days_in_month(CAL_GREGORIAN, $bln, $thn);
+// Format teks label periode
+if ($tglDari === $tglSampai) {
+    $badgePeriode = date('d M Y', strtotime($tglDari));
+} else {
+    $badgePeriode = date('d M Y', strtotime($tglDari)) . ' - ' . date('d M Y', strtotime($tglSampai));
+}
 
-    $badgePeriode = ($namaBulanIndo[$bln] ?? $bln) . ' ' . $thn;
-    $dateStartCond = sprintf('%04d-%02d-01 00:00:00', $thn, $bln);
-    $dateEndCond   = sprintf('%04d-%02d-%02d 23:59:59', $thn, $bln, $totalDays);
+// Hitung rentang hari
+$currTs = strtotime($tglDari);
+$endTs  = strtotime($tglSampai);
+$dayCount = round(($endTs - $currTs) / 86400) + 1;
 
-    for ($d = 1; $d <= $totalDays; $d++) {
-        $tglStr = sprintf('%04d-%02d-%02d', $thn, $bln, $d);
-        $labelsChart[] = sprintf('%02d %s', $d, substr($namaBulanIndo[$bln], 0, 3));
+$labelsChart = [];
+$salesChart  = [];
+$chartType   = 'line';
+$rataUnit    = 'hari';
+
+if ($dayCount <= 62) {
+    // Mode Harian (<= 62 hari)
+    $chartType = 'line';
+    $rataUnit  = 'hari';
+    while ($currTs <= $endTs) {
+        $tglStr = date('Y-m-d', $currTs);
+        $labelsChart[] = date('d M', $currTs);
         $salesChart[$tglStr] = 0;
+        $currTs = strtotime('+1 day', $currTs);
     }
-
     $qData = get_query($conn, "
-        SELECT DATE(tanggal_waktu) as tgl, SUM(grand_total) as total
+        SELECT DATE(tanggal_waktu) as k, SUM(grand_total) as total
         FROM tbl_penjualan
         WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-        GROUP BY tgl
+        GROUP BY k
     ");
     while ($r = $qData->fetch_assoc()) {
-        if (isset($salesChart[$r['tgl']])) {
-            $salesChart[$r['tgl']] = (int)$r['total'];
-        }
-    }
-} elseif (strpos($filterPeriode, 'y_') === 0) {
-    // Mode Tahunan (contoh: y_2026)
-    $thn = (int)substr($filterPeriode, 2);
-    $chartType = 'bar';
-    $rataUnit = 'bulan';
-    $badgePeriode = 'Tahun ' . $thn;
-    $dateStartCond = sprintf('%04d-01-01 00:00:00', $thn);
-    $dateEndCond   = sprintf('%04d-12-31 23:59:59', $thn);
-
-    for ($m = 1; $m <= 12; $m++) {
-        $labelsChart[] = substr($namaBulanIndo[$m], 0, 3);
-        $salesChart[$m] = 0;
-    }
-
-    $qData = get_query($conn, "
-        SELECT MONTH(tanggal_waktu) as bln, SUM(grand_total) as total
-        FROM tbl_penjualan
-        WHERE YEAR(tanggal_waktu) = '$thn'
-        GROUP BY bln
-    ");
-    while ($r = $qData->fetch_assoc()) {
-        $salesChart[(int)$r['bln']] = (int)$r['total'];
-    }
-} elseif ($filterPeriode === 'bulan_ini') {
-    $thn = (int)date('Y');
-    $bln = (int)date('m');
-    $totalDays = cal_days_in_month(CAL_GREGORIAN, $bln, $thn);
-    $badgePeriode = 'Bulan Ini (' . $namaBulanIndo[$bln] . ' ' . $thn . ')';
-    $dateStartCond = sprintf('%04d-%02d-01 00:00:00', $thn, $bln);
-    $dateEndCond   = sprintf('%04d-%02d-%02d 23:59:59', $thn, $bln, $totalDays);
-
-    for ($d = 1; $d <= $totalDays; $d++) {
-        $tglStr = sprintf('%04d-%02d-%02d', $thn, $bln, $d);
-        $labelsChart[] = sprintf('%02d %s', $d, substr($namaBulanIndo[$bln], 0, 3));
-        $salesChart[$tglStr] = 0;
-    }
-
-    $qData = get_query($conn, "
-        SELECT DATE(tanggal_waktu) as tgl, SUM(grand_total) as total
-        FROM tbl_penjualan
-        WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-        GROUP BY tgl
-    ");
-    while ($r = $qData->fetch_assoc()) {
-        if (isset($salesChart[$r['tgl']])) {
-            $salesChart[$r['tgl']] = (int)$r['total'];
-        }
-    }
-} elseif ($filterPeriode === 'bulan_lalu') {
-    $lastMonthTs = strtotime('first day of last month');
-    $thn = (int)date('Y', $lastMonthTs);
-    $bln = (int)date('m', $lastMonthTs);
-    $totalDays = cal_days_in_month(CAL_GREGORIAN, $bln, $thn);
-    $badgePeriode = 'Bulan Lalu (' . $namaBulanIndo[$bln] . ' ' . $thn . ')';
-    $dateStartCond = sprintf('%04d-%02d-01 00:00:00', $thn, $bln);
-    $dateEndCond   = sprintf('%04d-%02d-%02d 23:59:59', $thn, $bln, $totalDays);
-
-    for ($d = 1; $d <= $totalDays; $d++) {
-        $tglStr = sprintf('%04d-%02d-%02d', $thn, $bln, $d);
-        $labelsChart[] = sprintf('%02d %s', $d, substr($namaBulanIndo[$bln], 0, 3));
-        $salesChart[$tglStr] = 0;
-    }
-
-    $qData = get_query($conn, "
-        SELECT DATE(tanggal_waktu) as tgl, SUM(grand_total) as total
-        FROM tbl_penjualan
-        WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-        GROUP BY tgl
-    ");
-    while ($r = $qData->fetch_assoc()) {
-        if (isset($salesChart[$r['tgl']])) {
-            $salesChart[$r['tgl']] = (int)$r['total'];
-        }
-    }
-} elseif ($filterPeriode === '30hari') {
-    $badgePeriode = '30 Hari Terakhir';
-    $dateStartCond = date('Y-m-d 00:00:00', strtotime('-29 days'));
-    $dateEndCond   = date('Y-m-d 23:59:59');
-
-    for ($i = 29; $i >= 0; $i--) {
-        $tgl = date('Y-m-d', strtotime("-$i days"));
-        $labelsChart[] = date('d M', strtotime($tgl));
-        $salesChart[$tgl] = 0;
-    }
-
-    $qData = get_query($conn, "
-        SELECT DATE(tanggal_waktu) as tgl, SUM(grand_total) as total
-        FROM tbl_penjualan
-        WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-        GROUP BY tgl
-    ");
-    while ($r = $qData->fetch_assoc()) {
-        if (isset($salesChart[$r['tgl']])) {
-            $salesChart[$r['tgl']] = (int)$r['total'];
-        }
-    }
-} elseif ($filterPeriode === 'custom' && !empty($tglMulai) && !empty($tglSelesai)) {
-    $badgePeriode = date('d M Y', strtotime($tglMulai)) . ' - ' . date('d M Y', strtotime($tglSelesai));
-    $dateStartCond = $tglMulai . ' 00:00:00';
-    $dateEndCond   = $tglSelesai . ' 23:59:59';
-
-    $curr = strtotime($tglMulai);
-    $end  = strtotime($tglSelesai);
-    $dayCount = round(($end - $curr) / 86400) + 1;
-
-    if ($dayCount <= 62) {
-        while ($curr <= $end) {
-            $tglStr = date('Y-m-d', $curr);
-            $labelsChart[] = date('d M', $curr);
-            $salesChart[$tglStr] = 0;
-            $curr = strtotime('+1 day', $curr);
-        }
-        $qData = get_query($conn, "
-            SELECT DATE(tanggal_waktu) as tgl, SUM(grand_total) as total
-            FROM tbl_penjualan
-            WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-            GROUP BY tgl
-        ");
-        while ($r = $qData->fetch_assoc()) {
-            if (isset($salesChart[$r['tgl']])) {
-                $salesChart[$r['tgl']] = (int)$r['total'];
-            }
-        }
-    } else {
-        $chartType = 'bar';
-        $rataUnit = 'bulan';
-        $curr = strtotime(date('Y-m-01', $curr));
-        while ($curr <= $end) {
-            $ym = date('Y-m', $curr);
-            $labelsChart[] = date('M Y', $curr);
-            $salesChart[$ym] = 0;
-            $curr = strtotime('+1 month', $curr);
-        }
-        $qData = get_query($conn, "
-            SELECT DATE_FORMAT(tanggal_waktu, '%Y-%m') as ym, SUM(grand_total) as total
-            FROM tbl_penjualan
-            WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-            GROUP BY ym
-        ");
-        while ($r = $qData->fetch_assoc()) {
-            if (isset($salesChart[$r['ym']])) {
-                $salesChart[$r['ym']] = (int)$r['total'];
-            }
+        if (isset($salesChart[$r['k']])) {
+            $salesChart[$r['k']] = (int)$r['total'];
         }
     }
 } else {
-    // Default: 7 Hari Terakhir
-    $filterPeriode = '7hari';
-    $badgePeriode = '7 Hari Terakhir';
-    $dateStartCond = date('Y-m-d 00:00:00', strtotime('-6 days'));
-    $dateEndCond   = date('Y-m-d 23:59:59');
-
-    for ($i = 6; $i >= 0; $i--) {
-        $tgl = date('Y-m-d', strtotime("-$i days"));
-        $labelsChart[] = date('d M', strtotime($tgl));
-        $salesChart[$tgl] = 0;
+    // Mode Bulanan (> 62 hari)
+    $chartType = 'bar';
+    $rataUnit  = 'bulan';
+    $currMonth = strtotime(date('Y-m-01', $currTs));
+    while ($currMonth <= $endTs) {
+        $ym = date('Y-m', $currMonth);
+        $labelsChart[] = date('M Y', $currMonth);
+        $salesChart[$ym] = 0;
+        $currMonth = strtotime('+1 month', $currMonth);
     }
-
     $qData = get_query($conn, "
-        SELECT DATE(tanggal_waktu) as tgl, SUM(grand_total) as total
+        SELECT DATE_FORMAT(tanggal_waktu, '%Y-%m') as k, SUM(grand_total) as total
         FROM tbl_penjualan
         WHERE tanggal_waktu >= '$dateStartCond' AND tanggal_waktu <= '$dateEndCond'
-        GROUP BY tgl
+        GROUP BY k
     ");
     while ($r = $qData->fetch_assoc()) {
-        if (isset($salesChart[$r['tgl']])) {
-            $salesChart[$r['tgl']] = (int)$r['total'];
+        if (isset($salesChart[$r['k']])) {
+            $salesChart[$r['k']] = (int)$r['total'];
         }
     }
 }
@@ -292,6 +125,19 @@ $rataRataPeriode   = ($dataPointsCount > 0) ? round($totalOmsetPeriode / $dataPo
 $jsSalesChart  = json_encode(array_values($salesChart));
 $jsLabelsChart = json_encode($labelsChart);
 $jsChartType   = json_encode($chartType);
+
+// Cek bulan transaksi terakhir untuk rekomendasi jika rentang saat ini kosong
+$qLastTrx = get_query($conn, "SELECT DATE(tanggal_waktu) as tgl_akhir FROM tbl_penjualan ORDER BY tanggal_waktu DESC LIMIT 1");
+$rLastTrx = $qLastTrx ? $qLastTrx->fetch_assoc() : null;
+$saranTglDari = '';
+$saranTglSampai = '';
+$saranLabel = '';
+if ($rLastTrx && !empty($rLastTrx['tgl_akhir'])) {
+    $lastDate = $rLastTrx['tgl_akhir'];
+    $saranTglDari = date('Y-m-01', strtotime($lastDate));
+    $saranTglSampai = date('Y-m-t', strtotime($lastDate));
+    $saranLabel = date('F Y', strtotime($lastDate));
+}
 
 // Tabel: Barang terjual pada periode terpilih
 $qBarangTerjual = get_query($conn, "
@@ -323,7 +169,9 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
             <span class="kpi-label">Total Penjualan Hari Ini</span>
             <div class="kpi-value-row">
                 <div class="kpi-value-group">
-                    <div class="kpi-value" style="font-size:18px;">Rp <?= number_format($totalPenjualanHariIni, 0, ',', '.') ?></div>
+                    <div class="kpi-value" style="font-size:18px;">
+                        <span class="sensitive-value" data-value="Rp <?= number_format($totalPenjualanHariIni, 0, ',', '.') ?>">Rp ••••••••</span>
+                    </div>
                     <div class="kpi-unit">Pendapatan</div>
                 </div>
                 <i class="fa-solid fa-money-bill-wave kpi-icon"></i>
@@ -377,73 +225,49 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
                             <?= htmlspecialchars($badgePeriode) ?>
                         </span>
                     </div>
-                    <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-                        Total: <strong style="color:var(--text-main); font-size:13px;">Rp <?= number_format($totalOmsetPeriode, 0, ',', '.') ?></strong>
-                        <span style="margin:0 5px; color:#cbd5e1;">•</span>
-                        <strong style="color:var(--text-main);"><?= number_format($totalTrxPeriode) ?></strong> Transaksi
-                        <span style="margin:0 5px; color:#cbd5e1;">•</span>
-                        Rata-rata: <strong style="color:var(--text-main);">Rp <?= number_format($rataRataPeriode, 0, ',', '.') ?></strong> / <?= $rataUnit ?>
+                    <!-- Sensitive Nominals + Eye Toggle Button -->
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <span>
+                            Total: <strong class="sensitive-value" data-value="Rp <?= number_format($totalOmsetPeriode, 0, ',', '.') ?>" style="color:var(--text-main); font-size:13px; font-weight:700;">Rp ••••••••</strong>
+                            <span style="margin:0 5px; color:#cbd5e1;">•</span>
+                            <strong style="color:var(--text-main);"><?= number_format($totalTrxPeriode) ?></strong> Transaksi
+                            <span style="margin:0 5px; color:#cbd5e1;">•</span>
+                            Rata-rata: <strong class="sensitive-value" data-value="Rp <?= number_format($rataRataPeriode, 0, ',', '.') ?>" style="color:var(--text-main); font-weight:700;">Rp ••••••••</strong> / <?= $rataUnit ?>
+                        </span>
+                        <button type="button" onclick="toggleSensitiveValues()" id="btnToggleSensitif" style="border:1px solid var(--border-color); background:#fff; border-radius:6px; padding:2px 8px; cursor:pointer; color:var(--text-muted); font-size:11.5px; display:inline-flex; align-items:center; gap:5px; line-height:1.2; box-shadow:0 1px 2px rgba(0,0,0,0.02);" title="Klik untuk menampilkan / menyembunyikan nominal">
+                            <i class="fa-solid fa-eye-slash" id="iconSensitif"></i>
+                            <span id="labelSensitif" style="font-weight:600;">Sembunyi</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Form Filter Periode -->
-                <form method="GET" action="" id="formFilterGrafik" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <!-- Form Filter Rentang Waktu -->
+                <form method="GET" action="" id="formFilterRentang" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <input type="hidden" name="page" value="dashboard">
-
-                    <!-- Dropdown Periode -->
-                    <div>
-                        <select name="periode" id="selectPeriodeGrafik" class="form-control" onchange="handlePeriodeChange(this.value)" style="font-size:12.5px; font-weight:600; padding:6px 12px; height:auto; cursor:pointer; border-radius:8px; min-width:185px;">
-                            <optgroup label="Preset Waktu">
-                                <option value="7hari" <?= $filterPeriode === '7hari' ? 'selected' : '' ?>>7 Hari Terakhir</option>
-                                <option value="30hari" <?= $filterPeriode === '30hari' ? 'selected' : '' ?>>30 Hari Terakhir</option>
-                                <option value="bulan_ini" <?= $filterPeriode === 'bulan_ini' ? 'selected' : '' ?>>Bulan Ini (<?= date('M Y') ?>)</option>
-                                <option value="bulan_lalu" <?= $filterPeriode === 'bulan_lalu' ? 'selected' : '' ?>>Bulan Lalu</option>
-                            </optgroup>
-                            <?php if (!empty($listBulanDB)): ?>
-                            <optgroup label="Bulan Riwayat Sebelumnya">
-                                <?php foreach ($listBulanDB as $lb): ?>
-                                <option value="m_<?= $lb['ym'] ?>" <?= $filterPeriode === 'm_' . $lb['ym'] ? 'selected' : '' ?>>
-                                    <?= $lb['label'] ?> (<?= $lb['jml'] ?> trx)
-                                </option>
-                                <?php endforeach; ?>
-                            </optgroup>
-                            <?php endif; ?>
-                            <?php if (!empty($listTahunDB)): ?>
-                            <optgroup label="Tahunan (12 Bulan)">
-                                <?php foreach ($listTahunDB as $th): ?>
-                                <option value="y_<?= $th ?>" <?= $filterPeriode === 'y_' . $th ? 'selected' : '' ?>>
-                                    Tahun <?= $th ?> (Jan - Des)
-                                </option>
-                                <?php endforeach; ?>
-                            </optgroup>
-                            <?php endif; ?>
-                            <optgroup label="Kustom">
-                                <option value="custom" <?= $filterPeriode === 'custom' ? 'selected' : '' ?>>Rentang Tanggal Custom...</option>
-                            </optgroup>
-                        </select>
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--border-color); padding:4px 10px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                        <i class="fa-solid fa-calendar-days" style="color:var(--text-muted); font-size:12.5px;"></i>
+                        <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Rentang:</span>
+                        <input type="date" name="tgl_dari" id="filterTglDari" value="<?= htmlspecialchars($tglDari) ?>" class="form-control" style="border:none; padding:2px 0; font-size:12.5px; width:125px; height:auto; box-shadow:none; cursor:pointer;" onchange="autoSubmitRentang()">
+                        <span style="color:var(--text-muted); font-size:12px; font-weight:600;">s/d</span>
+                        <input type="date" name="tgl_sampai" id="filterTglSampai" value="<?= htmlspecialchars($tglSampai) ?>" class="form-control" style="border:none; padding:2px 0; font-size:12.5px; width:125px; height:auto; box-shadow:none; cursor:pointer;" onchange="autoSubmitRentang()">
                     </div>
-
-                    <!-- Panel Input Custom Rentang Tanggal -->
-                    <div id="panelCustomDate" style="display:<?= $filterPeriode === 'custom' ? 'flex' : 'none' ?>; gap:6px; align-items:center;">
-                        <input type="date" name="tgl_mulai" value="<?= htmlspecialchars($tglMulai) ?>" class="form-control" style="font-size:12px; padding:6px 8px; height:auto; width:130px;">
-                        <span style="font-size:12px; color:var(--text-muted);">-</span>
-                        <input type="date" name="tgl_selesai" value="<?= htmlspecialchars($tglSelesai) ?>" class="form-control" style="font-size:12px; padding:6px 8px; height:auto; width:130px;">
-                        <button type="submit" class="btn btn-primary" style="padding:6px 12px; font-size:12px;">
-                            <i class="fa-solid fa-arrow-right"></i>
-                        </button>
-                    </div>
+                    <?php if (isset($_GET['tgl_dari']) || isset($_GET['tgl_sampai'])): ?>
+                    <a href="?page=dashboard" class="btn btn-outline" style="padding:5px 10px; font-size:12px; color:#ef4444; border-color:#fca5a5;" title="Kembali ke 7 hari terakhir">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </a>
+                    <?php endif; ?>
                 </form>
             </div>
 
-            <?php if ($totalTrxPeriode == 0 && !empty($listBulanDB) && strpos($filterPeriode, 'm_') !== 0): ?>
-            <!-- Alert jika periode terpilih masih kosong & ada riwayat transaksi sebelumnya -->
+            <?php if ($totalTrxPeriode == 0 && !empty($saranTglDari)): ?>
+            <!-- Alert jika rentang terpilih masih kosong & ada riwayat transaksi sebelumnya -->
             <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:9px 13px; border-radius:8px; font-size:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
                     <i class="fa-solid fa-circle-info" style="color:#d97706; margin-right:5px;"></i>
-                    Belum ada transaksi di <strong><?= htmlspecialchars($badgePeriode) ?></strong>. Terakhir ada data pada <strong><?= $listBulanDB[0]['label'] ?></strong>.
+                    Belum ada transaksi di rentang tanggal ini. Terakhir ada data pada <strong><?= $saranLabel ?></strong>.
                 </div>
-                <a href="?page=dashboard&periode=m_<?= $listBulanDB[0]['ym'] ?>" style="color:#b45309; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-size:11.5px; background:#fef3c7; padding:3px 9px; border-radius:6px; border:1px solid #fde68a;">
-                    Buka Grafik <?= $listBulanDB[0]['label'] ?> <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>
+                <a href="?page=dashboard&tgl_dari=<?= $saranTglDari ?>&tgl_sampai=<?= $saranTglSampai ?>" style="color:#b45309; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-size:11.5px; background:#fef3c7; padding:3px 9px; border-radius:6px; border:1px solid #fde68a;">
+                    Buka Rentang <?= $saranLabel ?> <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>
                 </a>
             </div>
             <?php endif; ?>
@@ -483,17 +307,62 @@ $stokKritis = $qKritis->fetch_assoc()['jml'];
 </div>
 
 <script>
-function handlePeriodeChange(val) {
-    const panel = document.getElementById('panelCustomDate');
-    if (val === 'custom') {
-        if (panel) panel.style.display = 'flex';
-    } else {
-        if (panel) panel.style.display = 'none';
-        document.getElementById('formFilterGrafik').submit();
+// Logika Sembunyikan / Tampilkan Nominal Sensitif dengan Icon Mata
+let isSensitiveHidden = (localStorage.getItem('dashboard_sensitif_hidden') !== 'false'); // Default: Sembunyi (true)
+
+function applySensitiveState() {
+    const elements = document.querySelectorAll('.sensitive-value');
+    const icon = document.getElementById('iconSensitif');
+    const label = document.getElementById('labelSensitif');
+
+    elements.forEach(el => {
+        const original = el.getAttribute('data-value');
+        if (isSensitiveHidden) {
+            el.textContent = 'Rp ••••••••';
+            el.title = 'Nominal disembunyikan (klik icon mata untuk melihat)';
+        } else {
+            el.textContent = original;
+            el.title = '';
+        }
+    });
+
+    if (icon) {
+        if (isSensitiveHidden) {
+            icon.className = 'fa-solid fa-eye-slash';
+            if (label) label.textContent = 'Sembunyi';
+        } else {
+            icon.className = 'fa-solid fa-eye';
+            if (label) label.textContent = 'Terlihat';
+        }
+    }
+
+    localStorage.setItem('dashboard_sensitif_hidden', isSensitiveHidden ? 'true' : 'false');
+}
+
+function toggleSensitiveValues() {
+    isSensitiveHidden = !isSensitiveHidden;
+    applySensitiveState();
+    if (window.salesChartInstance) {
+        window.salesChartInstance.update();
+    }
+}
+
+// Otomatis submit form rentang waktu saat tanggal diubah
+function autoSubmitRentang() {
+    const dari = document.getElementById('filterTglDari').value;
+    const sampai = document.getElementById('filterTglSampai').value;
+    if (dari && sampai) {
+        if (dari > sampai) {
+            document.getElementById('filterTglSampai').value = dari;
+        }
+        document.getElementById('formFilterRentang').submit();
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Terapkan state sensitif awal
+    applySensitiveState();
+
     Chart.defaults.font.family = "'Outfit', sans-serif";
     Chart.defaults.color = '#64748B';
 
@@ -529,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
-        new Chart(ctx, {
+        window.salesChartInstance = new Chart(ctx, {
             type: chartType,
             data: {
                 labels: labels,
@@ -549,6 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         displayColors: false,
                         callbacks: {
                             label: function(context) {
+                                if (isSensitiveHidden) {
+                                    return 'Total: Rp ••••••••';
+                                }
                                 return 'Total: Rp ' + Number(context.parsed.y || 0).toLocaleString('id-ID');
                             }
                         }
@@ -561,6 +433,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         ticks: {
                             font: { size: 11 },
                             callback: function(value) {
+                                if (isSensitiveHidden) {
+                                    if (value === 0) return '0';
+                                    return '••••';
+                                }
                                 if (value === 0) return '0';
                                 if (value >= 1000000) return (value / 1000000).toFixed(1).replace('.0', '') + 'jt';
                                 if (value >= 1000) return (value / 1000).toFixed(0) + 'rb';
