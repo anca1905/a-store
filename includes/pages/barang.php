@@ -85,7 +85,7 @@ while ($rk = $qKat->fetch_assoc()) {
                         <i class="fa-solid fa-eye" id="iconToggleHargaBeli"></i>
                         <span id="labelToggleHargaBeli">Tampilkan Harga Beli</span>
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="openModal('modalTambah')" style="padding:8px 16px;">
+                    <button type="button" class="btn btn-primary" onclick="openTambahBarangModal()" style="padding:8px 16px;">
                         <i class="fa-solid fa-plus"></i> Tambah Barang
                     </button>
                 </div>
@@ -192,20 +192,30 @@ while ($rk = $qKat->fetch_assoc()) {
                 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:16px;">
                     <div class="form-group" style="margin:0;">
-                        <label class="form-label">Kode Barang <span style="color:red">*</span></label>
-                        <input type="text" name="kode_barang" class="form-control" required placeholder="BRG-00123" style="background:var(--bg-body); border:1px solid transparent;">
-                        <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">Kode akan dibuat otomatis oleh sistem.</small>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <label class="form-label" style="margin:0;">Kode Barang <span style="color:red">*</span></label>
+                            <span id="badgeAutoKode" style="background:#e0f2fe; color:#0284c7; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Otomatis
+                            </span>
+                        </div>
+                        <div style="position:relative;">
+                            <input type="text" name="kode_barang" id="tambah_kode_barang" class="form-control" required placeholder="Contoh: RAJUT01, CULUTULAR01" style="background:var(--bg-body); border:1px solid var(--border-color); padding-right:40px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
+                            <button type="button" onclick="triggerAutoKode(true)" title="Buat ulang kode otomatis berurutan (01, 02, ...)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--primary-color); cursor:pointer; padding:6px; font-size:14px;">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                        <small id="hintKodeBarang" style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">Kode dibuat otomatis berurutan (01, 02, ...) mengikuti nama/kategori barang.</small>
                     </div>
                     <div class="form-group" style="margin:0;">
                         <label class="form-label">Nama Barang <span style="color:red">*</span></label>
-                        <input type="text" name="nama_produk" class="form-control" required placeholder="Masukkan nama barang">
+                        <input type="text" name="nama_produk" id="tambah_nama_produk" class="form-control" required placeholder="Masukkan nama barang">
                     </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:16px;">
                     <div class="form-group" style="margin:0;">
                         <label class="form-label">Kategori <span style="color:red">*</span></label>
-                        <select name="kategori" class="form-control" required>
+                        <select name="kategori" id="tambah_kategori" class="form-control" required>
                             <option value="">Pilih kategori barang</option>
                             <?php foreach ($listKategori as $kat): ?>
                             <option value="<?= htmlspecialchars($kat) ?>"><?= htmlspecialchars($kat) ?></option>
@@ -214,9 +224,9 @@ while ($rk = $qKat->fetch_assoc()) {
                     </div>
                     <div class="form-group" style="margin:0;">
                         <label class="form-label">Satuan <span style="color:red">*</span></label>
-                        <select name="satuan" class="form-control" required>
+                        <select name="satuan" id="tambah_satuan" class="form-control" required>
                             <option value="">Pilih satuan</option>
-                            <option value="Pcs">Pcs</option>
+                            <option value="Pcs" selected>Pcs</option>
                             <option value="Box">Box</option>
                             <option value="Lusin">Lusin</option>
                             <option value="Kg">Kg</option>
@@ -502,9 +512,117 @@ function editBarang(data) {
     openModal('modalEdit');
 }
 
+// ─── Otomatisasi Kode Barang ─────────────────────────────────────────────
+let isManualKode = false;
+let autoKodeTimer = null;
+
+function openTambahBarangModal() {
+    isManualKode = false;
+    const form = document.querySelector('#modalTambah form');
+    if (form) form.reset();
+    
+    const badge = document.getElementById('badgeAutoKode');
+    if (badge) {
+        badge.style.background = '#e0f2fe';
+        badge.style.color = '#0284c7';
+        badge.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Otomatis';
+    }
+    const hint = document.getElementById('hintKodeBarang');
+    if (hint) {
+        hint.innerHTML = 'Kode dibuat otomatis berurutan (01, 02, ...) mengikuti nama/kategori barang.';
+    }
+    const kodeInp = document.getElementById('tambah_kode_barang');
+    if (kodeInp) {
+        kodeInp.value = '';
+        kodeInp.placeholder = 'Contoh: RAJUT01, CULUTULAR01';
+    }
+    openModal('modalTambah');
+}
+
+function triggerAutoKode(forceRefresh = false) {
+    if (forceRefresh) {
+        isManualKode = false;
+        const badge = document.getElementById('badgeAutoKode');
+        if (badge) {
+            badge.style.background = '#e0f2fe';
+            badge.style.color = '#0284c7';
+            badge.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Otomatis';
+        }
+    }
+    
+    if (isManualKode && !forceRefresh) return;
+    
+    const namaInp = document.getElementById('tambah_nama_produk');
+    const katInp  = document.getElementById('tambah_kategori');
+    const kodeInp = document.getElementById('tambah_kode_barang');
+    const hint    = document.getElementById('hintKodeBarang');
+    
+    const nama = namaInp ? namaInp.value.trim() : '';
+    const kat  = katInp ? katInp.value.trim() : '';
+    
+    if (!nama && !kat) {
+        if (kodeInp && !kodeInp.value) {
+            kodeInp.placeholder = 'Contoh: RAJUT01, CULUTULAR01';
+        }
+        return;
+    }
+    
+    clearTimeout(autoKodeTimer);
+    autoKodeTimer = setTimeout(() => {
+        fetch(`action_barang.php?ajax=get_kode&nama=${encodeURIComponent(nama)}&kategori=${encodeURIComponent(kat)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.kode_barang) {
+                    if (!isManualKode || forceRefresh) {
+                        if (kodeInp) {
+                            kodeInp.value = data.kode_barang;
+                        }
+                        if (hint) {
+                            const noUrut = data.next_num < 10 ? '0' + data.next_num : data.next_num;
+                            hint.innerHTML = `Kode otomatis: <strong style="color:var(--primary-color);">${data.kode_barang}</strong> (Nomor urut ${noUrut})`;
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error('Gagal mengambil kode otomatis:', err));
+    }, 200);
+}
+
 // Jalankan saat halaman selesai dimuat
 document.addEventListener('DOMContentLoaded', function() {
     updateHargaBeliDisplay();
+
+    // Event listener untuk otomatisasi kode barang
+    const kodeInp = document.getElementById('tambah_kode_barang');
+    const namaInp = document.getElementById('tambah_nama_produk');
+    const katInp  = document.getElementById('tambah_kategori');
+    const badge   = document.getElementById('badgeAutoKode');
+    const hint    = document.getElementById('hintKodeBarang');
+
+    if (namaInp) {
+        namaInp.addEventListener('input', () => triggerAutoKode(false));
+    }
+    if (katInp) {
+        katInp.addEventListener('change', () => triggerAutoKode(false));
+    }
+    if (kodeInp) {
+        kodeInp.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                isManualKode = true;
+                if (badge) {
+                    badge.style.background = '#fef3c7';
+                    badge.style.color = '#b45309';
+                    badge.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Manual';
+                }
+                if (hint) {
+                    hint.innerHTML = 'Mode input manual aktif. Klik <a href="javascript:void(0)" onclick="triggerAutoKode(true)" style="color:var(--primary-color); font-weight:600; text-decoration:underline;">di sini</a> untuk kembali otomatis.';
+                }
+            } else {
+                isManualKode = false;
+                triggerAutoKode(true);
+            }
+        });
+    }
 
     // Filter instan saat mengetik di input pencarian
     const inputCari = document.getElementById('inputCariBarang');

@@ -20,6 +20,180 @@ function uploadFoto($file) {
     return null;
 }
 
+// Helper: Penentuan prefix kode barang otomatis mengikuti model yang diinput
+function determinePrefixBarang($nama, $kategori) {
+    $namaUpper = strtoupper(trim((string)$nama));
+    $katUpper  = strtoupper(trim((string)$kategori));
+    
+    // Pemetaan kata kunci / merk yang telah digunakan oleh user/teman
+    $knownKeywords = [
+        'CULTULAR'     => 'CULUTULAR',
+        'CULUTULAR'    => 'CULUTULAR',
+        'RAJUT'        => 'RAJUT',
+        'KNITWEAR'     => 'RAJUT',
+        'KEMEJA'       => 'KMEJA',
+        'WISH'         => 'WISH',
+        'HPND'         => 'HPNDHODIEE',
+        'THREEWORLD'   => 'THREEWORLD',
+        'FREAKY'       => 'FREAKY',
+        'POLO'         => 'POLO',
+        'JERSEY'       => 'JERSEY',
+        'MIDELHIGH'    => 'MIDLDLEHIGHT',
+        'MIDLDLEHIGHT' => 'MIDLDLEHIGHT',
+        'LONG SLEEVE'  => 'LONGSLEVE',
+        'LONGSLEVE'    => 'LONGSLEVE',
+        'LNGSLEEVE'    => 'LNGSLEEVE',
+        'CURDUROY'     => 'CRDUROY',
+        'KENSI'        => 'KNSI',
+        'CINCIN'       => 'CNCN',
+        'KALUNG'       => 'KLG',
+        'SLING BAG'    => 'SLGBAG',
+        'SLINGBAG'     => 'SLGBAG',
+        'RANSEL'       => 'RNSL',
+        'SELEMPANG'    => 'SLMPNG',
+        'PARFUM'       => 'PRFM',
+        'SENDAL'       => 'SNDL',
+        'HELM'         => 'HLM',
+        'SEPATU'       => 'SPT',
+        'TOPI'         => 'TPI',
+        'SHORT PANTS'  => 'SP',
+        'LONG PANTS'   => 'LP',
+        'AEROSTREET'   => 'ATS',
+        'BANDANA'      => 'BDN',
+        'BLIND BOX'    => 'BLB',
+        'DOMPET'       => 'DMP',
+        'GANTUNGAN'    => 'GTG',
+        'JAM TANGAN'   => 'JTG',
+        'KACAMATA'     => 'KCM',
+        'KOS KAKI'     => 'KSK',
+        'STAINLESS'    => 'STL',
+        'TUMBLER'      => 'STL',
+        'KERTAS'       => 'KTS',
+    ];
+
+    // 1. Cek kecocokan kata kunci pada nama produk
+    foreach ($knownKeywords as $kw => $pref) {
+        if (strpos($namaUpper, $kw) !== false) {
+            return $pref;
+        }
+    }
+    
+    // 2. Ambil kata pertama yang signifikan dari nama produk (merk/tipe produk baru)
+    $cleanName = preg_replace('/^(MSA\\.CO|AFD|BRAND|THE)\\s+/i', '', $namaUpper);
+    $words = preg_split('/[\\s\\/\\-_]+/', trim($cleanName));
+    if (!empty($words[0])) {
+        $firstWord = preg_replace('/[^A-Z]/', '', $words[0]);
+        if (strlen($firstWord) >= 3 && !in_array($firstWord, ['TSHIRT', 'SHIRT', 'BAJU', 'CELANA', 'OVERSIZE', 'BOXY', 'REGULER', 'CREWNECK', 'ORIGINAL'])) {
+            return $firstWord;
+        }
+    }
+    
+    // 3. Fallback: Standar prefix kategori
+    $categoryDefaults = [
+        'ATASAN'        => 'ATS',
+        'SHORT PANTS'   => 'SP',
+        'LONG PANTS'    => 'LP',
+        'KEMEJA'        => 'KMEJA',
+        'HODIEE'        => 'HDE',
+        'JERSEY'        => 'JERSEY',
+        'SEPATU'        => 'SPT',
+        'TOPI'          => 'TPI',
+        'HELM'          => 'HLM',
+        'SENDAL'        => 'SNDL',
+        'PARFUM'        => 'PRFM',
+        'RANSEL'        => 'RNSL',
+        'TAS SELEMPANG' => 'SLMPNG',
+        'SLING BAG'     => 'SLGBAG',
+        'KALUNG'        => 'KLG',
+        'CINCIN'        => 'CNCN',
+        'BANDANA'       => 'BDN',
+        'BLIND BOX'     => 'BLB',
+        'DOMPET'        => 'DMP',
+        'GANTUNGAN'     => 'GTG',
+        'JAM TANGAN'    => 'JTG',
+        'KACAMATA'      => 'KCM',
+        'KOS KAKI'      => 'KSK',
+        'STAINLESS'     => 'STL',
+        'LONG SLEEVE'   => 'LONGSLEVE',
+        'ACCESSORIES'   => 'ACC',
+        'KERTAS'        => 'KTS',
+    ];
+    
+    if (isset($categoryDefaults[$katUpper])) {
+        return $categoryDefaults[$katUpper];
+    }
+    
+    // 4. Default aman jika kategori belum terdaftar
+    $cleanKat = preg_replace('/[^A-Z]/', '', $katUpper);
+    return substr($cleanKat, 0, 4) ?: 'BRG';
+}
+
+function generateKodeBarangOtomatis($conn, $nama = '', $kategori = '', $customPrefix = '') {
+    $prefix = '';
+    if (!empty($customPrefix)) {
+        // Hapus angka di akhir jika ada, dan bersihkan karakter
+        $prefix = preg_replace('/[0-9]+$/', '', strtoupper(trim((string)$customPrefix)));
+        $prefix = preg_replace('/[^A-Z0-9_]/', '', $prefix);
+    }
+    
+    if (empty($prefix)) {
+        $prefix = determinePrefixBarang($nama, $kategori);
+    }
+    
+    $prefix = strtoupper(trim($prefix));
+    $esc = $conn->real_escape_string($prefix);
+    
+    // Cari semua kode dengan prefix yang sama diikuti angka
+    $res = $conn->query("SELECT kode_barang FROM tbl_barang WHERE kode_barang REGEXP '^" . $esc . "[0-9]+$'");
+    $maxNum = 0;
+    $digits = 2; // Format 2 digit (01, 02, 03) sesuai instruksi user
+    
+    if ($res && $res->num_rows > 0) {
+        while ($row = $res->fetch_assoc()) {
+            $code = $row['kode_barang'];
+            if (preg_match('/^' . preg_quote($prefix, '/') . '(\\d+)$/', $code, $m)) {
+                $num = (int)$m[1];
+                if ($num > $maxNum) {
+                    $maxNum = $num;
+                    $digits = max(2, strlen($m[1]));
+                }
+            }
+        }
+    }
+    
+    $nextNum = $maxNum + 1;
+    $padded = str_pad($nextNum, max(2, $digits), '0', STR_PAD_LEFT);
+    $fullKode = $prefix . $padded;
+    
+    return [
+        'kode_barang' => $fullKode,
+        'prefix'      => $prefix,
+        'next_num'    => $nextNum,
+        'digits'      => $digits
+    ];
+}
+
+// ─── AJAX ENDPOINT: GENERATE KODE OTOMATIS ─────────────────────────────
+if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_kode') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+        exit;
+    }
+    $nama     = $_GET['nama'] ?? '';
+    $kategori = $_GET['kategori'] ?? '';
+    $prefix   = $_GET['prefix'] ?? '';
+    
+    $res = generateKodeBarangOtomatis($conn, $nama, $kategori, $prefix);
+    echo json_encode([
+        'status'      => 'success',
+        'kode_barang' => $res['kode_barang'],
+        'prefix'      => $res['prefix'],
+        'next_num'    => $res['next_num']
+    ]);
+    exit;
+}
+
 // Guard: hanya Pimpinan
 if (!isPimpinan()) {
     header("Location: index.php?error=" . urlencode("Akses ditolak."));
@@ -57,10 +231,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($up) $foto_sql = "'" . $conn->real_escape_string($up) . "'";
         }
 
-        $cek = get_query($conn, "SELECT id_barang FROM tbl_barang WHERE kode_barang='$kode_barang'");
-        if ($cek->num_rows > 0) {
-            header("Location: index.php?page=barang&error=" . urlencode("Kode '$kode_barang' sudah terdaftar."));
-            exit;
+        // Jika kode_barang kosong atau sudah terdaftar, generate otomatis berurutan
+        if (empty($kode_barang)) {
+            $gen = generateKodeBarangOtomatis($conn, $nama, $kategori);
+            $kode_barang = $gen['kode_barang'];
+        } else {
+            $cek = get_query($conn, "SELECT id_barang FROM tbl_barang WHERE kode_barang='$kode_barang'");
+            if ($cek->num_rows > 0) {
+                // Generate nomor berikutnya jika kode duplikat
+                $gen = generateKodeBarangOtomatis($conn, $nama, $kategori, $kode_barang);
+                $kode_barang = $gen['kode_barang'];
+            }
         }
 
         $sql = "INSERT INTO tbl_barang
@@ -68,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 VALUES
                     ('$kode_barang','$nama','$kategori','$satuan',$harga_beli,$harga_jual,$stok_min,$stok_aktual,'$deskripsi',$foto_sql)";
         get_query($conn, $sql);
-        header("Location: index.php?page=barang&msg=" . urlencode("Barang berhasil ditambahkan."));
+        header("Location: index.php?page=barang&msg=" . urlencode("Barang '$nama' ($kode_barang) berhasil ditambahkan."));
         exit;
 
     // ─── UPDATE ──────────────────────────────────────────────────────
