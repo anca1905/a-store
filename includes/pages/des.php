@@ -6,7 +6,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus_riwayat' && isset($_GET[
     $msgRiwayat = "Riwayat peramalan berhasil dihapus!";
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'simpan_riwayat') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'simpan_riwayat') {
     $kb = $conn->real_escape_string($_POST['kode_barang']);
     $nama = $conn->real_escape_string($_POST['nama_barang']);
     $periode = $conn->real_escape_string($_POST['n_periode']);
