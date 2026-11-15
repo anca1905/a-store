@@ -28,26 +28,41 @@ function determinePrefixBarang($nama, $kategori) {
     $cleanTokens = preg_split('/[\s\/\-_]+/', $namaUpper);
     $rawFirstWord = !empty($cleanTokens[0]) ? preg_replace('/[^A-Z0-9]/', '', $cleanTokens[0]) : '';
     
-    // Pemetaan brand / kata kunci agar kode konsisten dengan data yang sudah diinput
-    // Khusus CULTULAR / CULUTULAR / CULTURAL -> selalu CULTULAR
+    // Pemetaan brand / kata kunci agar kode konsisten dengan database
+    // Menggunakan kata depan penuh yang konsisten (tanpa typo atau singkatan membingungkan)
     $brandAliases = [
         'CULTULAR'     => 'CULTULAR',
         'CULUTULAR'    => 'CULTULAR',
         'CULTURAL'     => 'CULTULAR',
         'CULTURE'      => 'CULTULAR',
+        'MIDELHIGH'    => 'MIDELHIGH',
+        'MIDEL'        => 'MIDELHIGH',
+        'MIDLDLEHIGHT' => 'MIDELHIGH',
+        'MIDDLEHIGH'   => 'MIDELHIGH',
+        'AFD'          => 'AFD',
+        'METAFORA'     => 'METAFORA',
+        'METAFORE'     => 'METAFORA',
+        'MSA'          => 'MSA',
+        'MSACO'        => 'MSA',
+        'KEMEJA'       => 'KEMEJA',
+        'KMJA'         => 'KEMEJA',
+        'KMEJA'        => 'KEMEJA',
+        'HPND'         => 'HPND',
+        'HPNDHODIEE'   => 'HPND',
         'WISH'         => 'WISH',
-        'HPND'         => 'HPNDHODIEE',
         'THREEWORLD'   => 'THREEWORLD',
         'FREAKY'       => 'FREAKY',
         'POLO'         => 'POLO',
         'JERSEY'       => 'JERSEY',
-        'MIDELHIGH'    => 'MIDLDLEHIGHT',
-        'MIDEL'        => 'MIDLDLEHIGHT',
-        'KEMEJA'       => 'KMEJA',
-        'CINCIN'       => 'CNCN',
-        'KALUNG'       => 'KLG',
-        'SLINGBAG'     => 'SLGBAG',
-        'SLING'        => 'SLGBAG',
+        'CINCIN'       => 'CINCIN',
+        'CNCN'         => 'CINCIN',
+        'KALUNG'       => 'KALUNG',
+        'KLG'          => 'KALUNG',
+        'SLINGBAG'     => 'SLINGBAG',
+        'SLING'        => 'SLINGBAG',
+        'SLGBAG'       => 'SLINGBAG',
+        'KENSI'        => 'KENSI',
+        'KNSI'         => 'KENSI',
         'RANSEL'       => 'RNSL',
         'SELEMPANG'    => 'SLMPNG',
         'PARFUM'       => 'PRFM',
@@ -55,7 +70,6 @@ function determinePrefixBarang($nama, $kategori) {
         'HELM'         => 'HLM',
         'SEPATU'       => 'SPT',
         'TOPI'         => 'TPI',
-        'KENSI'        => 'KNSI',
         'CURDUROY'     => 'CRDUROY',
         'RAJUT'        => 'RAJUT',
         'KNITWEAR'     => 'RAJUT',
@@ -67,11 +81,11 @@ function determinePrefixBarang($nama, $kategori) {
     }
 
     // Cek frasa multi-kata di bagian depan nama produk
+    if (strpos($namaUpper, 'SLING BAG') === 0 || strpos($namaUpper, 'SLINGBAG') === 0) {
+        return 'SLINGBAG';
+    }
     if (strpos($namaUpper, 'LONG SLEEVE') === 0 || strpos($namaUpper, 'LONGSLEVE') === 0 || strpos($namaUpper, 'LNGSLEEVE') === 0) {
         return 'LONGSLEVE';
-    }
-    if (strpos($namaUpper, 'SLING BAG') === 0) {
-        return 'SLGBAG';
     }
     if (strpos($namaUpper, 'SHORT PANTS') === 0) {
         return 'SP';
@@ -101,6 +115,9 @@ function determinePrefixBarang($nama, $kategori) {
     if (strpos($namaUpper, 'CULTULAR') !== false || strpos($namaUpper, 'CULUTULAR') !== false || strpos($namaUpper, 'CULTURAL') !== false) {
         return 'CULTULAR';
     }
+    if (strpos($namaUpper, 'MIDELHIGH') !== false || strpos($namaUpper, 'MIDLDLEHIGHT') !== false) {
+        return 'MIDELHIGH';
+    }
     if (strpos($namaUpper, 'WISH') !== false) {
         return 'WISH';
     }
@@ -110,7 +127,7 @@ function determinePrefixBarang($nama, $kategori) {
         'ATASAN'        => 'ATS',
         'SHORT PANTS'   => 'SP',
         'LONG PANTS'    => 'LP',
-        'KEMEJA'        => 'KMEJA',
+        'KEMEJA'        => 'KEMEJA',
         'HODIEE'        => 'HDE',
         'JERSEY'        => 'JERSEY',
         'SEPATU'        => 'SPT',
@@ -120,9 +137,9 @@ function determinePrefixBarang($nama, $kategori) {
         'PARFUM'        => 'PRFM',
         'RANSEL'        => 'RNSL',
         'TAS SELEMPANG' => 'SLMPNG',
-        'SLING BAG'     => 'SLGBAG',
-        'KALUNG'        => 'KLG',
-        'CINCIN'        => 'CNCN',
+        'SLING BAG'     => 'SLINGBAG',
+        'KALUNG'        => 'KALUNG',
+        'CINCIN'        => 'CINCIN',
         'BANDANA'       => 'BDN',
         'BLIND BOX'     => 'BLB',
         'DOMPET'        => 'DMP',
