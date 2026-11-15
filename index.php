@@ -63,7 +63,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'ajax_get_riwayat_detail' && i
     $ref = $conn->real_escape_string($rRow['referensi']);
     $n_periode = max(3, (int)$rRow['periode']);
     $alpha = (float)$rRow['alpha'];
-    $target_peramalan = $det['target_peramalan'] ?? (strpos($rRow['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
+    $target_peramalan = $det['target_peramalan'] ?? (strpos($rRow['target_waktu'], 'Bulan') !== false ? 'bulanan' : (strpos($rRow['target_waktu'], 'Hari') !== false ? 'harian' : 'mingguan'));
     $tanggal_acuan = !empty($det['tanggal_acuan']) ? $det['tanggal_acuan'] : date('Y-m-d', strtotime($rRow['tanggal_hitung']));
     $ts_acuan = strtotime($tanggal_acuan);
     

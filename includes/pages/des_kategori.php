@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 // Halaman: Peramalan Stok Kategori (DES)
 $id_kategori = isset($_GET['id_kategori']) ? (int)$_GET['id_kategori'] : 0;
 $target_peramalan = $_GET['target_peramalan'] ?? 'mingguan';
-$target_peramalan = in_array($target_peramalan, ['mingguan', 'bulanan']) ? $target_peramalan : 'mingguan';
+$target_peramalan = in_array($target_peramalan, ['harian', 'mingguan', 'bulanan']) ? $target_peramalan : 'mingguan';
 
 // Tanggal Acuan Perhitungan (Mundur dari tanggal ini)
 $tanggal_acuan = !empty($_GET['tanggal_acuan']) ? preg_replace('/[^0-9\-]/', '', $_GET['tanggal_acuan']) : date('Y-m-d');
@@ -44,11 +44,19 @@ if (!$ts_acuan) {
     $ts_acuan = strtotime($tanggal_acuan);
 }
 
-// Jumlah periode kedepan (1 minggu, 2 minggu, dst / 1 bulan, 2 bulan, dst)
+// Jumlah periode kedepan (1 hari, 2 hari, dst / 1 minggu, 2 minggu, dst / 1 bulan, 2 bulan, dst)
 $jumlah_target = max(1, (int)($_GET['jumlah_target'] ?? 1));
 
 // Hitung parameter dan satuan waktu
-if ($target_peramalan === 'mingguan') {
+if ($target_peramalan === 'harian') {
+    $step_per_group      = 1; // 1 hari = 1 hari
+    $total_steps         = $jumlah_target * $step_per_group;
+    $satuan_waktu        = 'Hari';
+    $satuan_data         = 'Hari';
+    $label_target_waktu  = ($jumlah_target == 1) ? '1 Hari Depan' : $jumlah_target . ' Hari Depan';
+    $label_target_detail = $label_target_waktu . ' (' . $total_steps . ' Hari)';
+    $default_n           = max(7, $total_steps);
+} elseif ($target_peramalan === 'mingguan') {
     $step_per_group      = 7; // 1 minggu = 7 hari
     $total_steps         = $jumlah_target * $step_per_group;
     $satuan_waktu        = 'Minggu';
@@ -269,10 +277,13 @@ if ($hitung) {
                 $g_start_ts = strtotime("+" . (($g - 1) * 28 + 1) . " days", $ts_acuan);
                 $g_end_ts   = strtotime("+" . ($g * 28) . " days", $ts_acuan);
                 $sublabel   = date('d M Y', $g_start_ts) . ' - ' . date('d M Y', $g_end_ts);
-            } else {
+            } elseif ($target_peramalan === 'mingguan') {
                 $g_start_ts = strtotime("+" . (($g - 1) * 7 + 1) . " days", $ts_acuan);
                 $g_end_ts   = strtotime("+" . ($g * 7) . " days", $ts_acuan);
                 $sublabel   = date('d M Y', $g_start_ts) . ' - ' . date('d M Y', $g_end_ts);
+            } else {
+                $g_ts       = strtotime("+" . $g . " days", $ts_acuan);
+                $sublabel   = date('d M Y', $g_ts);
             }
 
             $group_breakdown[] = [
@@ -448,6 +459,7 @@ if ($hitung) {
             <div style="display:grid; grid-template-columns: 160px 1fr; align-items:center;">
                 <label class="form-label" style="margin:0;">Target Peramalan</label>
                 <select name="target_peramalan" id="target_peramalan" class="form-control" onchange="gantiTipeTarget(this.value)" style="background:var(--bg-body); border-color:transparent;">
+                    <option value="harian" <?= $target_peramalan === 'harian' ? 'selected' : '' ?>>Peramalan Harian (Data Harian)</option>
                     <option value="mingguan" <?= $target_peramalan === 'mingguan' ? 'selected' : '' ?>>Peramalan Mingguan (Data Harian)</option>
                     <option value="bulanan" <?= $target_peramalan === 'bulanan' ? 'selected' : '' ?>>Peramalan Bulanan (Data Mingguan)</option>
                 </select>
@@ -931,7 +943,7 @@ if ($hitung) {
                     while($rh = $qHist->fetch_assoc()):
                         $riwayatDataStore[$rh['id_riwayat']] = $rh;
                         $detRow = !empty($rh['detail_json']) ? json_decode($rh['detail_json'], true) : [];
-                        $targetTypeRow = $detRow['target_peramalan'] ?? (strpos($rh['target_waktu'], 'Bulan') !== false ? 'bulanan' : 'mingguan');
+                        $targetTypeRow = $detRow['target_peramalan'] ?? (strpos($rh['target_waktu'], 'Bulan') !== false ? 'bulanan' : (strpos($rh['target_waktu'], 'Hari') !== false ? 'harian' : 'mingguan'));
                         $jumlahTRow = $detRow['jumlah_target'] ?? 1;
                         $tglARow = $detRow['tanggal_acuan'] ?? '';
                         $waktuAcuanDisplay = !empty($tglARow) ? date('d/m/Y', strtotime($tglARow)) : date('d/m/Y', strtotime($rh['tanggal_hitung']));
@@ -941,7 +953,7 @@ if ($hitung) {
                     <td><strong><?= htmlspecialchars($rh['referensi']) ?></strong></td>
                     <td><?= htmlspecialchars($rh['nama_referensi']) ?></td>
                     <td><span style="font-weight:600; color:var(--text-main);"><?= htmlspecialchars($rh['target_waktu']) ?></span></td>
-                    <td><?= $rh['periode'] ?> <?= strpos($rh['target_waktu'], 'Minggu') !== false ? 'Hari' : 'Minggu' ?></td>
+                    <td><?= $rh['periode'] ?> <?= strpos($rh['target_waktu'], 'Bulan') !== false ? 'Minggu' : 'Hari' ?></td>
                     <td><?= $rh['alpha'] ?></td>
                     <td style="color:var(--primary-color); font-weight:bold;"><?= number_format($rh['hasil'],0,',','.') ?> Unit</td>
                     <?php
@@ -1366,7 +1378,7 @@ function bukaModalDetailRiwayat(id) {
     }
     
     // Tombol muat ke kalkulator (dengan parameter &show_detail=1)
-    const targetType = (detail && detail.target_peramalan) ? detail.target_peramalan : (data.target_waktu.indexOf('Bulan') !== -1 ? 'bulanan' : 'mingguan');
+    const targetType = (detail && detail.target_peramalan) ? detail.target_peramalan : (data.target_waktu.indexOf('Bulan') !== -1 ? 'bulanan' : (data.target_waktu.indexOf('Hari') !== -1 ? 'harian' : 'mingguan'));
     const jumlahT = (detail && detail.jumlah_target) ? detail.jumlah_target : 1;
     const tglA = (detail && detail.tanggal_acuan) ? detail.tanggal_acuan : '';
     let urlMuat = `index.php?page=des_kategori&id_kategori=${encodeURIComponent(data.referensi)}&target_peramalan=${targetType}&jumlah_target=${jumlahT}&n_periode=${data.periode}&alpha=${data.alpha}&show_detail=1`;
@@ -1604,6 +1616,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+const presetsHarian = [
+    { val: 1, label: '1 Hari Kedepan' },
+    { val: 2, label: '2 Hari Kedepan' },
+    { val: 3, label: '3 Hari Kedepan' },
+    { val: 5, label: '5 Hari Kedepan' },
+    { val: 7, label: '7 Hari Kedepan (1 Minggu)' },
+    { val: 14, label: '14 Hari Kedepan (2 Minggu)' },
+    { val: 30, label: '30 Hari Kedepan (1 Bulan)' },
+    { val: 'custom', label: 'Lebih / Kustom (Tentukan Hari)...' }
+];
+
 const presetsMingguan = [
     { val: 1, label: '1 Minggu Kedepan (7 Hari)' },
     { val: 2, label: '2 Minggu Kedepan (14 Hari)' },
@@ -1636,7 +1659,15 @@ function initDurasiDropdown() {
     const currentVal = parseInt(hiddenInput.value) || 1;
     
     durasiSelect.innerHTML = '';
-    const presets = (targetType === 'mingguan') ? presetsMingguan : presetsBulanan;
+    let presets = presetsMingguan;
+    let customUnit = 'Minggu';
+    if (targetType === 'harian') {
+        presets = presetsHarian;
+        customUnit = 'Hari';
+    } else if (targetType === 'bulanan') {
+        presets = presetsBulanan;
+        customUnit = 'Bulan';
+    }
     let isPresetFound = false;
     
     presets.forEach(p => {
@@ -1650,7 +1681,7 @@ function initDurasiDropdown() {
         durasiSelect.appendChild(opt);
     });
     
-    customLabel.textContent = (targetType === 'mingguan') ? 'Minggu' : 'Bulan';
+    customLabel.textContent = customUnit;
     
     if (!isPresetFound) {
         durasiSelect.value = 'custom';
@@ -1667,7 +1698,13 @@ function gantiTipeTarget(val) {
     const nInput = document.getElementById('input_n_periode');
     const durasi = parseInt(document.getElementById('input_jumlah_target').value) || 1;
     if (nInput) {
-        nInput.value = (val === 'mingguan') ? Math.max(7, durasi * 7) : Math.max(4, durasi * 4);
+        if (val === 'harian') {
+            nInput.value = Math.max(7, durasi);
+        } else if (val === 'mingguan') {
+            nInput.value = Math.max(7, durasi * 7);
+        } else {
+            nInput.value = Math.max(4, durasi * 4);
+        }
     }
     document.getElementById('formPeramalan').submit();
 }
@@ -1690,7 +1727,13 @@ function gantiDurasi(val) {
         customInput.value = val;
         let num = parseInt(val);
         if (nInput) {
-            nInput.value = (targetType === 'mingguan') ? Math.max(7, num * 7) : Math.max(4, num * 4);
+            if (targetType === 'harian') {
+                nInput.value = Math.max(7, num);
+            } else if (targetType === 'mingguan') {
+                nInput.value = Math.max(7, num * 7);
+            } else {
+                nInput.value = Math.max(4, num * 4);
+            }
         }
     }
     updatePreviewText();
@@ -1702,7 +1745,13 @@ function inputCustomDurasi(val) {
     const targetType = document.getElementById('target_peramalan').value;
     const nInput = document.getElementById('input_n_periode');
     if (nInput) {
-        nInput.value = (targetType === 'mingguan') ? Math.max(7, num * 7) : Math.max(4, num * 4);
+        if (targetType === 'harian') {
+            nInput.value = Math.max(7, num);
+        } else if (targetType === 'mingguan') {
+            nInput.value = Math.max(7, num * 7);
+        } else {
+            nInput.value = Math.max(4, num * 4);
+        }
     }
     updatePreviewText();
 }
@@ -1713,7 +1762,10 @@ function updatePreviewText() {
     const preview = document.getElementById('preview_output');
     const num = Math.max(1, parseInt(hiddenInput.value) || 1);
     
-    if (targetType === 'mingguan') {
+    if (targetType === 'harian') {
+        const txt = (num === 1) ? '1 Hari Depan (1 Hari)' : num + ' Hari Depan (' + num + ' Hari)';
+        if (preview) preview.value = txt;
+    } else if (targetType === 'mingguan') {
         const days = num * 7;
         const txt = (num === 1) ? '1 Minggu Depan (7 Hari)' : num + ' Minggu Depan (' + days + ' Hari)';
         if (preview) preview.value = txt;
