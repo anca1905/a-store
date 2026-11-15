@@ -1,7 +1,6 @@
 <?php
 session_start();
 include 'config.php';
-include 'cek_sesi.php';
 
 // Fungsi upload foto
 function uploadFoto($file) {
@@ -193,6 +192,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_kode') {
     ]);
     exit;
 }
+
+include 'cek_sesi.php';
 
 // Guard: hanya Pimpinan
 if (!isPimpinan()) {
