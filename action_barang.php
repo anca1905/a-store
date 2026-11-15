@@ -19,18 +19,22 @@ function uploadFoto($file) {
     return null;
 }
 
-// Helper: Penentuan prefix kode barang otomatis mengikuti model yang diinput
+// Helper: Penentuan prefix kode barang otomatis mengikuti model yang diinput (mengambil kata depan produk)
 function determinePrefixBarang($nama, $kategori) {
     $namaUpper = strtoupper(trim((string)$nama));
     $katUpper  = strtoupper(trim((string)$kategori));
     
-    // Pemetaan kata kunci / merk yang telah digunakan oleh user/teman
-    $knownKeywords = [
-        'CULTULAR'     => 'CULUTULAR',
-        'CULUTULAR'    => 'CULUTULAR',
-        'RAJUT'        => 'RAJUT',
-        'KNITWEAR'     => 'RAJUT',
-        'KEMEJA'       => 'KMEJA',
+    // 1. Ekstrak kata depan / token pertama dari nama barang
+    $cleanTokens = preg_split('/[\s\/\-_]+/', $namaUpper);
+    $rawFirstWord = !empty($cleanTokens[0]) ? preg_replace('/[^A-Z0-9]/', '', $cleanTokens[0]) : '';
+    
+    // Pemetaan brand / kata kunci agar kode konsisten dengan data yang sudah diinput
+    // Khusus CULTULAR / CULUTULAR / CULTURAL -> selalu CULTULAR
+    $brandAliases = [
+        'CULTULAR'     => 'CULTULAR',
+        'CULUTULAR'    => 'CULTULAR',
+        'CULTURAL'     => 'CULTULAR',
+        'CULTURE'      => 'CULTULAR',
         'WISH'         => 'WISH',
         'HPND'         => 'HPNDHODIEE',
         'THREEWORLD'   => 'THREEWORLD',
@@ -38,16 +42,12 @@ function determinePrefixBarang($nama, $kategori) {
         'POLO'         => 'POLO',
         'JERSEY'       => 'JERSEY',
         'MIDELHIGH'    => 'MIDLDLEHIGHT',
-        'MIDLDLEHIGHT' => 'MIDLDLEHIGHT',
-        'LONG SLEEVE'  => 'LONGSLEVE',
-        'LONGSLEVE'    => 'LONGSLEVE',
-        'LNGSLEEVE'    => 'LNGSLEEVE',
-        'CURDUROY'     => 'CRDUROY',
-        'KENSI'        => 'KNSI',
+        'MIDEL'        => 'MIDLDLEHIGHT',
+        'KEMEJA'       => 'KMEJA',
         'CINCIN'       => 'CNCN',
         'KALUNG'       => 'KLG',
-        'SLING BAG'    => 'SLGBAG',
         'SLINGBAG'     => 'SLGBAG',
+        'SLING'        => 'SLGBAG',
         'RANSEL'       => 'RNSL',
         'SELEMPANG'    => 'SLMPNG',
         'PARFUM'       => 'PRFM',
@@ -55,39 +55,57 @@ function determinePrefixBarang($nama, $kategori) {
         'HELM'         => 'HLM',
         'SEPATU'       => 'SPT',
         'TOPI'         => 'TPI',
-        'SHORT PANTS'  => 'SP',
-        'LONG PANTS'   => 'LP',
-        'AEROSTREET'   => 'ATS',
-        'BANDANA'      => 'BDN',
-        'BLIND BOX'    => 'BLB',
-        'DOMPET'       => 'DMP',
-        'GANTUNGAN'    => 'GTG',
-        'JAM TANGAN'   => 'JTG',
-        'KACAMATA'     => 'KCM',
-        'KOS KAKI'     => 'KSK',
-        'STAINLESS'    => 'STL',
-        'TUMBLER'      => 'STL',
-        'KERTAS'       => 'KTS',
+        'KENSI'        => 'KNSI',
+        'CURDUROY'     => 'CRDUROY',
+        'RAJUT'        => 'RAJUT',
+        'KNITWEAR'     => 'RAJUT',
     ];
 
-    // 1. Cek kecocokan kata kunci pada nama produk
-    foreach ($knownKeywords as $kw => $pref) {
-        if (strpos($namaUpper, $kw) !== false) {
-            return $pref;
+    // Cek jika kata pertama cocok dengan alias yang sudah dikenal
+    if (!empty($rawFirstWord) && isset($brandAliases[$rawFirstWord])) {
+        return $brandAliases[$rawFirstWord];
+    }
+
+    // Cek frasa multi-kata di bagian depan nama produk
+    if (strpos($namaUpper, 'LONG SLEEVE') === 0 || strpos($namaUpper, 'LONGSLEVE') === 0 || strpos($namaUpper, 'LNGSLEEVE') === 0) {
+        return 'LONGSLEVE';
+    }
+    if (strpos($namaUpper, 'SLING BAG') === 0) {
+        return 'SLGBAG';
+    }
+    if (strpos($namaUpper, 'SHORT PANTS') === 0) {
+        return 'SP';
+    }
+    if (strpos($namaUpper, 'LONG PANTS') === 0) {
+        return 'LP';
+    }
+
+    // Jika kata depan adalah nama merk/model (panjang >= 2, bukan kata umum seperti TSHIRT, BAJU, CELANA)
+    $ignoreWords = ['TSHIRT', 'SHIRT', 'BAJU', 'CELANA', 'OVERSIZE', 'BOXY', 'REGULER', 'ORIGINAL', 'CREWNECK'];
+    if (!empty($rawFirstWord) && strlen($rawFirstWord) >= 2 && !in_array($rawFirstWord, $ignoreWords)) {
+        return $rawFirstWord;
+    }
+
+    // Jika kata pertama adalah kata yang diabaikan (misal "TSHIRT CULTULAR ..."), cek kata kedua
+    if (!empty($cleanTokens[1])) {
+        $secondWord = preg_replace('/[^A-Z0-9]/', '', $cleanTokens[1]);
+        if (isset($brandAliases[$secondWord])) {
+            return $brandAliases[$secondWord];
+        }
+        if (strlen($secondWord) >= 2 && !in_array($secondWord, $ignoreWords)) {
+            return $secondWord;
         }
     }
     
-    // 2. Ambil kata pertama yang signifikan dari nama produk (merk/tipe produk baru)
-    $cleanName = preg_replace('/^(MSA\\.CO|AFD|BRAND|THE)\\s+/i', '', $namaUpper);
-    $words = preg_split('/[\\s\\/\\-_]+/', trim($cleanName));
-    if (!empty($words[0])) {
-        $firstWord = preg_replace('/[^A-Z]/', '', $words[0]);
-        if (strlen($firstWord) >= 3 && !in_array($firstWord, ['TSHIRT', 'SHIRT', 'BAJU', 'CELANA', 'OVERSIZE', 'BOXY', 'REGULER', 'CREWNECK', 'ORIGINAL'])) {
-            return $firstWord;
-        }
+    // Cek kecocokan jika kata kunci ada di dalam nama (fallback)
+    if (strpos($namaUpper, 'CULTULAR') !== false || strpos($namaUpper, 'CULUTULAR') !== false || strpos($namaUpper, 'CULTURAL') !== false) {
+        return 'CULTULAR';
     }
-    
-    // 3. Fallback: Standar prefix kategori
+    if (strpos($namaUpper, 'WISH') !== false) {
+        return 'WISH';
+    }
+
+    // 2. Fallback: Standar prefix kategori
     $categoryDefaults = [
         'ATASAN'        => 'ATS',
         'SHORT PANTS'   => 'SP',
@@ -122,7 +140,7 @@ function determinePrefixBarang($nama, $kategori) {
         return $categoryDefaults[$katUpper];
     }
     
-    // 4. Default aman jika kategori belum terdaftar
+    // 3. Default aman jika kategori belum terdaftar
     $cleanKat = preg_replace('/[^A-Z]/', '', $katUpper);
     return substr($cleanKat, 0, 4) ?: 'BRG';
 }
