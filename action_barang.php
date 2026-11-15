@@ -24,12 +24,66 @@ function determinePrefixBarang($nama, $kategori) {
     $namaUpper = strtoupper(trim((string)$nama));
     $katUpper  = strtoupper(trim((string)$kategori));
     
-    // 1. Ekstrak kata depan / token pertama dari nama barang
+    // 1. Pemetaan brand / frasa multi-kata di depan
+    $multiWordBrands = [
+        'BRAND THIS LAND'     => 'BRANDTHISLAND',
+        'EVERLASTING APPAREL' => 'EVERLASTING',
+        'DEATHLESS EMPIRE'    => 'DEATHLESS',
+        'DEATHLESS EMPIREE'   => 'DEATHLESS',
+        'DEATHLESS TSHRT'     => 'DEATHLESS',
+        'THREEWORLD X JUMP'   => 'THREEWORLD',
+        'BRICK MANSIONS'      => 'BRICKMANSIONS',
+        'XONE SHOES'          => 'XONESHOES',
+        'VANTELA ORIGINAL'    => 'VANTELA',
+        'MY BASIC'            => 'MYBASIC',
+        'PARASITE EVE'        => 'PARASITE',
+        'SHORT PANTS'         => 'SHORTPANTS',
+        'SHORTPANTS'          => 'SHORTPANTS',
+        'SHIORT PANTS'        => 'SHORTPANTS',
+        'BOARDSHORT'          => 'BOARDSHORT',
+        'BOARDSHOT'           => 'BOARDSHORT',
+        'LONG PANTS'          => 'LONGPANTS',
+        'LONGPANTS'           => 'LONGPANTS',
+        'LONG PNTS'           => 'LONGPANTS',
+        'SWEAT PANTS'         => 'SWEATPANTS',
+        'SWET PANTS'          => 'SWEATPANTS',
+        'LONG SLEEVE'         => 'LONGSLEEVE',
+        'LONGSLEVE'           => 'LONGSLEEVE',
+        'LONGSLEEVE'          => 'LONGSLEEVE',
+        'LON SLEEVE'          => 'LONGSLEEVE',
+        'LONG SLIVE'          => 'LONGSLEEVE',
+        'CREW NECK'           => 'CREWNECK',
+        'CREWNECK'            => 'CREWNECK',
+        'SLING BAG'           => 'SLINGBAG',
+        'SLINGBAG'            => 'SLINGBAG',
+        'TAS SELEMPANG'       => 'TASSELEMPANG',
+        'TA S SELEMPANG'      => 'TASSELEMPANG',
+        'TAS SELEMEPNG'       => 'TASSELEMPANG',
+        'TAS MINI'            => 'TASMINI',
+        'SNAP BACK'           => 'SNAPBACK',
+        'SNAPBACK'            => 'SNAPBACK',
+        'KOS KAKI'            => 'KOSKAKI',
+        'JAM TANGAN'          => 'JAMTANGAN',
+        'BLIND BOX'           => 'BLINDBOX',
+        'GA NTUNGAN'          => 'GANTUNGAN',
+        'MSA.CO'              => 'MSA',
+        'MSA CO'              => 'MSA',
+        'APPAREL.ID'          => 'APPARELID',
+        'WUSH CLUB'           => 'WISH',
+        'WISH CLUB'           => 'WISH',
+    ];
+    
+    foreach ($multiWordBrands as $phrase => $code) {
+        if (strpos($namaUpper, $phrase) === 0) {
+            return $code;
+        }
+    }
+    
+    // 2. Ekstrak kata depan / token pertama dari nama barang
     $cleanTokens = preg_split('/[\s\/\-_]+/', $namaUpper);
     $rawFirstWord = !empty($cleanTokens[0]) ? preg_replace('/[^A-Z0-9]/', '', $cleanTokens[0]) : '';
     
-    // Pemetaan brand / kata kunci agar kode konsisten dengan database
-    // Menggunakan kata depan penuh yang konsisten (tanpa typo atau singkatan membingungkan)
+    // Pemetaan kata depan ke kode standar
     $brandAliases = [
         'CULTULAR'     => 'CULTULAR',
         'CULUTULAR'    => 'CULTULAR',
@@ -37,70 +91,109 @@ function determinePrefixBarang($nama, $kategori) {
         'CULTURE'      => 'CULTULAR',
         'MIDELHIGH'    => 'MIDELHIGH',
         'MIDEL'        => 'MIDELHIGH',
+        'MIDELHIGTH'   => 'MIDELHIGH',
+        'MIDLE'        => 'MIDELHIGH',
+        'MIDDLE'       => 'MIDELHIGH',
         'MIDLDLEHIGHT' => 'MIDELHIGH',
-        'MIDDLEHIGH'   => 'MIDELHIGH',
+        'AEROSTREET'   => 'AEROSTREET',
         'AFD'          => 'AFD',
         'METAFORA'     => 'METAFORA',
         'METAFORE'     => 'METAFORA',
+        'METAFO'       => 'METAFORA',
+        'WISH'         => 'WISH',
+        'WUSH'         => 'WISH',
+        'FREAKY'       => 'FREAKY',
+        'HPND'         => 'HPND',
+        'HPNDHODIEE'   => 'HPND',
+        'THREEWORLD'   => 'THREEWORLD',
+        'DEATHLESS'    => 'DEATHLESS',
+        'DETAHLESS'    => 'DEATHLESS',
+        'EVERLASTING'  => 'EVERLASTING',
+        'ROXXE'        => 'ROXXE',
+        'WESTGODS'     => 'WESTGODS',
+        'VANTELA'      => 'VANTELA',
         'MSA'          => 'MSA',
         'MSACO'        => 'MSA',
         'KEMEJA'       => 'KEMEJA',
         'KMJA'         => 'KEMEJA',
         'KMEJA'        => 'KEMEJA',
-        'HPND'         => 'HPND',
-        'HPNDHODIEE'   => 'HPND',
-        'WISH'         => 'WISH',
-        'THREEWORLD'   => 'THREEWORLD',
-        'FREAKY'       => 'FREAKY',
+        'KMJ'          => 'KEMEJA',
         'POLO'         => 'POLO',
         'JERSEY'       => 'JERSEY',
         'CINCIN'       => 'CINCIN',
+        'CINICN'       => 'CINCIN',
         'CNCN'         => 'CINCIN',
         'KALUNG'       => 'KALUNG',
+        'KALU'         => 'KALUNG',
         'KLG'          => 'KALUNG',
         'SLINGBAG'     => 'SLINGBAG',
         'SLING'        => 'SLINGBAG',
         'SLGBAG'       => 'SLINGBAG',
         'KENSI'        => 'KENSI',
         'KNSI'         => 'KENSI',
-        'RANSEL'       => 'RNSL',
-        'SELEMPANG'    => 'SLMPNG',
-        'PARFUM'       => 'PRFM',
-        'SENDAL'       => 'SNDL',
-        'HELM'         => 'HLM',
-        'SEPATU'       => 'SPT',
-        'TOPI'         => 'TPI',
+        'RANSEL'       => 'RANSEL',
+        'RNSL'         => 'RANSEL',
+        'SELEMPANG'    => 'TASSELEMPANG',
+        'SLMPNG'       => 'TASSELEMPANG',
+        'PARFUM'       => 'PARFUM',
+        'PRFM'         => 'PARFUM',
+        'PRF'          => 'PARFUM',
+        'SENDAL'       => 'SENDAL',
+        'SNDL'         => 'SENDAL',
+        'SND'          => 'SENDAL',
+        'HELM'         => 'HELM',
+        'HLM'          => 'HELM',
+        'SEPATU'       => 'SEPATU',
+        'SPT'          => 'SEPATU',
+        'SHOES'        => 'SEPATU',
+        'TOPI'         => 'TOPI',
+        'TPI'          => 'TOPI',
+        'BANDANA'      => 'BANDANA',
+        'BDN'          => 'BANDANA',
+        'DOMPET'       => 'DOMPET',
+        'DMP'          => 'DOMPET',
+        'GANTUNGAN'    => 'GANTUNGAN',
+        'GTG'          => 'GANTUNGAN',
+        'JAMTANGAN'    => 'JAMTANGAN',
+        'JTG'          => 'JAMTANGAN',
+        'KACAMATA'     => 'KACAMATA',
+        'KCM'          => 'KACAMATA',
+        'KOSKAKI'      => 'KOSKAKI',
+        'KSK'          => 'KOSKAKI',
+        'HOODIE'       => 'HOODIE',
+        'HODIE'        => 'HOODIE',
+        'HODIEE'       => 'HOODIE',
+        'HDE'          => 'HOODIE',
+        'SHORTPANTS'   => 'SHORTPANTS',
+        'SP'           => 'SHORTPANTS',
+        'LONGPANTS'    => 'LONGPANTS',
+        'LP'           => 'LONGPANTS',
+        'LONGSLEEVE'   => 'LONGSLEEVE',
+        'LONGSLEVE'    => 'LONGSLEEVE',
+        'SWEATPANTS'   => 'SWEATPANTS',
+        'SWEATER'      => 'SWEATER',
+        'SWITER'       => 'SWEATER',
+        'CARPENTER'    => 'CARPENTER',
+        'BAGGY'        => 'BAGGY',
+        'BOARDSHORT'   => 'BOARDSHORT',
+        'CREWNECK'     => 'CREWNECK',
+        'TSHIRT'       => 'TSHIRT',
         'CURDUROY'     => 'CRDUROY',
         'RAJUT'        => 'RAJUT',
         'KNITWEAR'     => 'RAJUT',
     ];
 
-    // Cek jika kata pertama cocok dengan alias yang sudah dikenal
     if (!empty($rawFirstWord) && isset($brandAliases[$rawFirstWord])) {
         return $brandAliases[$rawFirstWord];
     }
 
-    // Cek frasa multi-kata di bagian depan nama produk
-    if (strpos($namaUpper, 'SLING BAG') === 0 || strpos($namaUpper, 'SLINGBAG') === 0) {
-        return 'SLINGBAG';
-    }
-    if (strpos($namaUpper, 'LONG SLEEVE') === 0 || strpos($namaUpper, 'LONGSLEVE') === 0 || strpos($namaUpper, 'LNGSLEEVE') === 0) {
-        return 'LONGSLEVE';
-    }
-    if (strpos($namaUpper, 'SHORT PANTS') === 0) {
-        return 'SP';
-    }
-    if (strpos($namaUpper, 'LONG PANTS') === 0) {
-        return 'LP';
-    }
-
-    // Jika kata depan adalah nama merk/model (panjang >= 2, bukan kata umum seperti TSHIRT, BAJU, CELANA)
-    $ignoreWords = ['TSHIRT', 'SHIRT', 'BAJU', 'CELANA', 'OVERSIZE', 'BOXY', 'REGULER', 'ORIGINAL', 'CREWNECK'];
+    // Jika kata depan adalah kata merk baru (panjang >= 2, bukan kata umum pengisi)
+    $ignoreWords = ['OVERSIZE', 'BOXY', 'REGULER', 'ORIGINAL', 'BAJU', 'CELANA'];
     if (!empty($rawFirstWord) && strlen($rawFirstWord) >= 2 && !in_array($rawFirstWord, $ignoreWords)) {
         return $rawFirstWord;
     }
 
-    // Jika kata pertama adalah kata yang diabaikan (misal "TSHIRT CULTULAR ..."), cek kata kedua
+    // Jika kata pertama diabaikan (misal "OVERSIZE WISH ..."), cek kata kedua
     if (!empty($cleanTokens[1])) {
         $secondWord = preg_replace('/[^A-Z0-9]/', '', $cleanTokens[1]);
         if (isset($brandAliases[$secondWord])) {
@@ -111,55 +204,43 @@ function determinePrefixBarang($nama, $kategori) {
         }
     }
     
-    // Cek kecocokan jika kata kunci ada di dalam nama (fallback)
-    if (strpos($namaUpper, 'CULTULAR') !== false || strpos($namaUpper, 'CULUTULAR') !== false || strpos($namaUpper, 'CULTURAL') !== false) {
-        return 'CULTULAR';
-    }
-    if (strpos($namaUpper, 'MIDELHIGH') !== false || strpos($namaUpper, 'MIDLDLEHIGHT') !== false) {
-        return 'MIDELHIGH';
-    }
-    if (strpos($namaUpper, 'WISH') !== false) {
-        return 'WISH';
-    }
-
-    // 2. Fallback: Standar prefix kategori
+    // Fallback: Standar prefix kategori
     $categoryDefaults = [
-        'ATASAN'        => 'ATS',
-        'SHORT PANTS'   => 'SP',
-        'LONG PANTS'    => 'LP',
+        'ATASAN'        => 'TSHIRT',
+        'SHORT PANTS'   => 'SHORTPANTS',
+        'LONG PANTS'    => 'LONGPANTS',
         'KEMEJA'        => 'KEMEJA',
-        'HODIEE'        => 'HDE',
+        'HODIEE'        => 'HOODIE',
         'JERSEY'        => 'JERSEY',
-        'SEPATU'        => 'SPT',
-        'TOPI'          => 'TPI',
-        'HELM'          => 'HLM',
-        'SENDAL'        => 'SNDL',
-        'PARFUM'        => 'PRFM',
-        'RANSEL'        => 'RNSL',
-        'TAS SELEMPANG' => 'SLMPNG',
+        'SEPATU'        => 'SEPATU',
+        'TOPI'          => 'TOPI',
+        'HELM'          => 'HELM',
+        'SENDAL'        => 'SENDAL',
+        'PARFUM'        => 'PARFUM',
+        'RANSEL'        => 'RANSEL',
+        'TAS SELEMPANG' => 'TASSELEMPANG',
         'SLING BAG'     => 'SLINGBAG',
         'KALUNG'        => 'KALUNG',
         'CINCIN'        => 'CINCIN',
-        'BANDANA'       => 'BDN',
-        'BLIND BOX'     => 'BLB',
-        'DOMPET'        => 'DMP',
-        'GANTUNGAN'     => 'GTG',
-        'JAM TANGAN'    => 'JTG',
-        'KACAMATA'      => 'KCM',
-        'KOS KAKI'      => 'KSK',
-        'STAINLESS'     => 'STL',
-        'LONG SLEEVE'   => 'LONGSLEVE',
-        'ACCESSORIES'   => 'ACC',
-        'KERTAS'        => 'KTS',
+        'BANDANA'       => 'BANDANA',
+        'BLIND BOX'     => 'BLINDBOX',
+        'DOMPET'        => 'DOMPET',
+        'GANTUNGAN'     => 'GANTUNGAN',
+        'JAM TANGAN'    => 'JAMTANGAN',
+        'KACAMATA'      => 'KACAMATA',
+        'KOS KAKI'      => 'KOSKAKI',
+        'STAINLESS'     => 'STAINLESS',
+        'LONG SLEEVE'   => 'LONGSLEEVE',
+        'ACCESSORIES'   => 'ACCESSORIES',
+        'KERTAS'        => 'KERTAS',
     ];
     
     if (isset($categoryDefaults[$katUpper])) {
         return $categoryDefaults[$katUpper];
     }
     
-    // 3. Default aman jika kategori belum terdaftar
     $cleanKat = preg_replace('/[^A-Z]/', '', $katUpper);
-    return substr($cleanKat, 0, 4) ?: 'BRG';
+    return substr($cleanKat, 0, 6) ?: 'BRG';
 }
 
 function generateKodeBarangOtomatis($conn, $nama = '', $kategori = '', $customPrefix = '') {
