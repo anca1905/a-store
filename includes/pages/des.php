@@ -49,6 +49,7 @@ $jumlah_target = max(1, (int)($_GET['jumlah_target'] ?? 1));
 
 // Hitung parameter dan satuan waktu
 if ($target_peramalan === 'harian') {
+    $jumlah_target       = min(6, max(1, (int)($_GET['jumlah_target'] ?? 1)));
     $step_per_group      = 1; // 1 hari = 1 hari
     $total_steps         = $jumlah_target * $step_per_group;
     $satuan_waktu        = 'Hari';
@@ -1619,11 +1620,9 @@ const presetsHarian = [
     { val: 1, label: '1 Hari Kedepan' },
     { val: 2, label: '2 Hari Kedepan' },
     { val: 3, label: '3 Hari Kedepan' },
+    { val: 4, label: '4 Hari Kedepan' },
     { val: 5, label: '5 Hari Kedepan' },
-    { val: 7, label: '7 Hari Kedepan (1 Minggu)' },
-    { val: 14, label: '14 Hari Kedepan (2 Minggu)' },
-    { val: 30, label: '30 Hari Kedepan (1 Bulan)' },
-    { val: 'custom', label: 'Lebih / Kustom (Tentukan Hari)...' }
+    { val: 6, label: '6 Hari Kedepan' }
 ];
 
 const presetsMingguan = [
@@ -1655,7 +1654,12 @@ function initDurasiDropdown() {
     const customWrapper = document.getElementById('wrapper_custom');
     const customInput = document.getElementById('input_custom_durasi');
     const customLabel = document.getElementById('label_custom_unit');
-    const currentVal = parseInt(hiddenInput.value) || 1;
+    let currentVal = parseInt(hiddenInput.value) || 1;
+    
+    if (targetType === 'harian' && currentVal > 6) {
+        currentVal = 6;
+        hiddenInput.value = 6;
+    }
     
     durasiSelect.innerHTML = '';
     let presets = presetsMingguan;
@@ -1683,9 +1687,15 @@ function initDurasiDropdown() {
     customLabel.textContent = customUnit;
     
     if (!isPresetFound) {
-        durasiSelect.value = 'custom';
-        customWrapper.style.display = 'inline-flex';
-        customInput.value = currentVal;
+        if (targetType === 'harian') {
+            durasiSelect.value = 1;
+            hiddenInput.value = 1;
+            customWrapper.style.display = 'none';
+        } else {
+            durasiSelect.value = 'custom';
+            customWrapper.style.display = 'inline-flex';
+            customInput.value = currentVal;
+        }
     } else {
         customWrapper.style.display = 'none';
         customInput.value = currentVal;
@@ -1695,7 +1705,12 @@ function initDurasiDropdown() {
 
 function gantiTipeTarget(val) {
     const nInput = document.getElementById('input_n_periode');
-    const durasi = parseInt(document.getElementById('input_jumlah_target').value) || 1;
+    const hiddenInput = document.getElementById('input_jumlah_target');
+    let durasi = parseInt(hiddenInput.value) || 1;
+    if (val === 'harian' && durasi > 6) {
+        durasi = 6;
+        hiddenInput.value = 6;
+    }
     if (nInput) {
         if (val === 'harian') {
             nInput.value = Math.max(7, durasi);
@@ -1740,6 +1755,9 @@ function gantiDurasi(val) {
 
 function inputCustomDurasi(val) {
     let num = Math.max(1, parseInt(val) || 1);
+    if (document.getElementById('target_peramalan').value === 'harian') {
+        num = Math.min(6, num);
+    }
     document.getElementById('input_jumlah_target').value = num;
     const targetType = document.getElementById('target_peramalan').value;
     const nInput = document.getElementById('input_n_periode');
@@ -1759,9 +1777,10 @@ function updatePreviewText() {
     const targetType = document.getElementById('target_peramalan').value;
     const hiddenInput = document.getElementById('input_jumlah_target');
     const preview = document.getElementById('preview_output');
-    const num = Math.max(1, parseInt(hiddenInput.value) || 1);
+    let num = Math.max(1, parseInt(hiddenInput.value) || 1);
     
     if (targetType === 'harian') {
+        num = Math.min(6, num);
         const txt = (num === 1) ? '1 Hari Depan (1 Hari)' : num + ' Hari Depan (' + num + ' Hari)';
         if (preview) preview.value = txt;
     } else if (targetType === 'mingguan') {
