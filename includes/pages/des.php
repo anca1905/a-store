@@ -918,10 +918,15 @@ if ($hitung) {
                     <td colspan="2" style="text-align:right; font-weight:700;">Total Evaluasi:</td>
                     <td style="font-weight:700;"><?= array_sum($aktual) ?></td>
                     <td colspan="5"></td>
-                    <td style="font-weight:700; color:var(--text-main); font-size:13px; text-align:center;">
-                        <?= number_format($total_abs_err, 2) ?><br>
-                        <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span><br>
-                        <span style="display:inline-block; margin-top:3px; padding:2px 6px; background:#e0f2fe; color:#0369a1; border-radius:4px; font-size:11px; font-weight:700;">MAD: <?= number_format($avg_mad, 2) ?></span>
+                    <td style="font-weight:700; font-size:13px; text-align:center; white-space:nowrap; padding:8px 12px;">
+                        <div style="display:inline-flex; align-items:center; gap:8px;">
+                            <span style="color:var(--text-main); font-weight:800;" title="Total Error Absolut (&Sigma; |e_t|)"><?= number_format($total_abs_err, 2) ?></span>
+                            <span style="color:#94a3b8; font-weight:normal;">|</span>
+                            <span style="color:#0284c7; font-weight:800;" title="Rata-rata MAD (Mean Absolute Deviation)"><?= number_format($avg_mad, 2) ?></span>
+                        </div>
+                        <div style="font-size:10px; font-weight:normal; color:var(--text-muted); margin-top:2px;">
+                            &Sigma; |e_t| &nbsp;|&nbsp; MAD
+                        </div>
                     </td>
                     <td style="font-weight:800; color:#ea580c; font-size:13px; text-align:center;">
                         <?= number_format($avg_mape, 2) ?>%<br>
@@ -1339,10 +1344,15 @@ function bukaModalDetailRiwayat(id) {
                 <td colspan="2" style="text-align:right;">Total Evaluasi:</td>
                 <td style="font-weight:700;">${totalAkt}</td>
                 <td colspan="5"></td>
-                <td style="font-weight:700; font-size:13px; text-align:center;">
-                    ${totalErr.toFixed(2)}<br>
-                    <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span><br>
-                    <span style="display:inline-block; margin-top:3px; padding:2px 6px; background:#e0f2fe; color:#0369a1; border-radius:4px; font-size:11px; font-weight:700;">MAD: ${avgMad}</span>
+                <td style="font-weight:700; font-size:13px; text-align:center; white-space:nowrap; padding:8px 12px;">
+                    <div style="display:inline-flex; align-items:center; gap:8px;">
+                        <span style="color:var(--text-main); font-weight:800;" title="Total Error Absolut (&Sigma; |e_t|)">${totalErr.toFixed(2)}</span>
+                        <span style="color:#94a3b8; font-weight:normal;">|</span>
+                        <span style="color:#0284c7; font-weight:800;" title="Rata-rata MAD (Mean Absolute Deviation)">${avgMad}</span>
+                    </div>
+                    <div style="font-size:10px; font-weight:normal; color:var(--text-muted); margin-top:2px;">
+                        &Sigma; |e_t| &nbsp;|&nbsp; MAD
+                    </div>
                 </td>
                 <td style="font-weight:800; color:#ea580c; font-size:13px; text-align:center;">
                     ${Number(avgMape).toFixed(2)}%<br>
@@ -1533,7 +1543,10 @@ function cetakModalRiwayat() {
                 <td colspan="2" style="text-align:right; padding:6px; border:1px solid #cbd5e1;">Total Evaluasi:</td>
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalAkt}</td>
                 <td colspan="5" style="border:1px solid #cbd5e1;"></td>
-                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalErr.toFixed(2)}<br><small style="color:#0284c7; font-weight:bold;">MAD: ${avgMadVal}</small></td>
+                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; white-space:nowrap;">
+                    <strong>${totalErr.toFixed(2)}</strong> <span style="color:#94a3b8; font-weight:normal; margin:0 4px;">|</span> <strong style="color:#0284c7;">${avgMadVal}</strong><br>
+                    <small style="font-size:9px; color:#64748b;">&Sigma; |e_t| &nbsp;|&nbsp; MAD</small>
+                </td>
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#ea580c;">${avgMapeVal}</td>
             </tr>
             <tr style="background:#f1f5f9; font-weight:bold;">
