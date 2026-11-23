@@ -1027,10 +1027,11 @@ if ($hitung) {
                         $madFormatted = '-';
                     }
                     ?>
-                    <td style="font-weight:700;">
+                    <td style="font-weight:700; white-space:nowrap;">
                         <span style="color:#ea580c;"><?= $mapeFormatted ?></span>
                         <?php if ($madFormatted !== '-'): ?>
-                            <br><span style="font-size:11px; color:#0284c7; font-weight:600;">MAD: <?= $madFormatted ?></span>
+                            <span style="color:#94a3b8; font-weight:normal; margin:0 5px;">|</span>
+                            <span style="font-size:12px; color:#0284c7; font-weight:700;">MAD: <?= $madFormatted ?></span>
                         <?php endif; ?>
                     </td>
                     <td style="white-space:nowrap; text-align:center;">
