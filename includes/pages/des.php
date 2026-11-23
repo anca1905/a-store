@@ -877,7 +877,7 @@ if ($hitung) {
                     <th>a_t</th>
                     <th>b_t</th>
                     <th>Peramalan (F_t)</th>
-                    <th>Error Absolut (|e_t|)</th>
+                    <th>MAD / MADE (|e_t|)</th>
                     <th>MAPE (%)</th>
                 </tr>
             </thead>
@@ -925,7 +925,7 @@ if ($hitung) {
                             <span style="color:#0284c7; font-weight:800;" title="Rata-rata MAD (Mean Absolute Deviation)"><?= number_format($avg_mad, 2) ?></span>
                         </div>
                         <div style="font-size:10px; font-weight:normal; color:var(--text-muted); margin-top:2px;">
-                            &Sigma; |e_t| &nbsp;|&nbsp; MAD
+                            &Sigma; |e_t| &nbsp;|&nbsp; MAD / MADE
                         </div>
                     </td>
                     <td style="font-weight:800; color:#ea580c; font-size:13px; text-align:center;">
@@ -947,8 +947,8 @@ if ($hitung) {
     <div style="padding:10px 16px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.6;">
         <i class="fa-solid fa-circle-info" style="color:var(--primary-color); margin-right:4px;"></i>
         <strong>Keterangan Rumus &amp; Evaluasi Model:</strong><br>
-        &bull; <strong>Error Absolut (|e_t|)</strong>: Selisih mutlak antara penjualan aktual dan peramalan (|Aktual (X_t) - Peramalan (F_t)|).<br>
-        &bull; <strong>MAD (Mean Absolute Deviation / MADE)</strong>: Rata-rata error absolut (&Sigma; |e_t| / n) untuk mengukur rata-rata melesetnya peramalan dalam satuan unit riil produk (pada peramalan ini: <strong><?= number_format($avg_mad, 2) ?> Unit</strong>).<br>
+        &bull; <strong>MAD / MADE (|e_t|)</strong>: Nilai selisih absolut per periode (|Aktual (X_t) - Peramalan (F_t)|).<br>
+        &bull; <strong>Rata-rata MAD / MADE</strong>: Rata-rata error absolut (&Sigma; |e_t| / n) untuk mengukur rata-rata melesetnya peramalan dalam satuan unit riil produk (pada peramalan ini: <strong><?= number_format($avg_mad, 2) ?> Unit</strong>).<br>
         &bull; <strong>MAPE per Periode</strong>: Persentase kesalahan relatif (|e_t| / X_t) &times; 100%. Periode ke-1 merupakan inisialisasi ($S'_0, S''_0$) sehingga evaluasi dimulai periode ke-2.<br>
         &bull; <strong>Rata-rata MAPE</strong>: Rata-rata persentase kesalahan dari <?= $count_mape ?> periode uji yang memiliki transaksi penjualan.<br>
         &bull; <strong>Kategori Model (Standar Lewis)</strong>: &le;10% Sangat Baik, 10-20% Baik, 20-50% Cukup/Wajar, &gt;50% Kurang/Tidak Akurat (Kategori peramalan ini: <strong><?= $kualitas ?></strong>).
@@ -1138,7 +1138,7 @@ if ($hitung) {
                             Audit Detail Perhitungan DES &amp; Evaluasi MAPE (Data Historis)
                         </div>
                         <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-                            Data penjualan historis aktual beserta parameter pemulusan ganda, peramalan F_t, nilai selisih error absolut, dan MAPE.
+                            Data penjualan historis aktual beserta parameter pemulusan ganda, peramalan F_t, evaluasi MAD / MADE (|e_t|), dan MAPE.
                         </div>
                     </div>
                 </div>
@@ -1154,7 +1154,7 @@ if ($hitung) {
                                 <th>a_t</th>
                                 <th>b_t</th>
                                 <th>Peramalan (F_t)</th>
-                                <th>Error Absolut (|e_t|)</th>
+                                <th>MAD / MADE (|e_t|)</th>
                                 <th>MAPE (%)</th>
                             </tr>
                         </thead>
@@ -1167,7 +1167,7 @@ if ($hitung) {
                     </table>
                 </div>
                 <div style="padding:8px 14px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.5;">
-                    &bull; <strong>Error Absolut (|e_t|)</strong> = |Aktual (X_t) - Peramalan (F_t)| &bull; <strong>MAPE</strong> = (|e_t| / X_t) &times; 100% &bull; Periode ke-1 adalah inisialisasi ($S'_0, S''_0$).
+                    &bull; <strong>MAD / MADE (|e_t|)</strong> = |Aktual (X_t) - Peramalan (F_t)| &bull; <strong>MAPE</strong> = (|e_t| / X_t) &times; 100% &bull; Periode ke-1 adalah inisialisasi ($S'_0, S''_0$).
                 </div>
             </div>
 
@@ -1352,7 +1352,7 @@ function bukaModalDetailRiwayat(id) {
                         <span style="color:#0284c7; font-weight:800;" title="Rata-rata MAD (Mean Absolute Deviation)">${avgMad}</span>
                     </div>
                     <div style="font-size:10px; font-weight:normal; color:var(--text-muted); margin-top:2px;">
-                        &Sigma; |e_t| &nbsp;|&nbsp; MAD
+                        &Sigma; |e_t| &nbsp;|&nbsp; MAD / MADE
                     </div>
                 </td>
                 <td style="font-weight:800; color:#ea580c; font-size:13px; text-align:center;">
@@ -1546,7 +1546,7 @@ function cetakModalRiwayat() {
                 <td colspan="5" style="border:1px solid #cbd5e1;"></td>
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; white-space:nowrap;">
                     <strong>${totalErr.toFixed(2)}</strong> <span style="color:#94a3b8; font-weight:normal; margin:0 4px;">|</span> <strong style="color:#0284c7;">${avgMadVal}</strong><br>
-                    <small style="font-size:9px; color:#64748b;">&Sigma; |e_t| &nbsp;|&nbsp; MAD</small>
+                    <small style="font-size:9px; color:#64748b;">&Sigma; |e_t| &nbsp;|&nbsp; MAD / MADE</small>
                 </td>
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#ea580c;">${avgMapeVal}</td>
             </tr>
@@ -1620,7 +1620,7 @@ function cetakModalRiwayat() {
         </div>
 
         ${histRowsHtml ? `
-        <h4>1. Audit Detail Perhitungan DES &amp; Evaluasi Akurasi MAPE &amp; MAD (Data Historis):</h4>
+        <h4>1. Audit Detail Perhitungan DES &amp; Evaluasi Akurasi MAPE &amp; MAD / MADE (Data Historis):</h4>
         <table>
             <thead>
                 <tr>
@@ -1632,7 +1632,7 @@ function cetakModalRiwayat() {
                     <th>a_t</th>
                     <th>b_t</th>
                     <th>Peramalan (F_t)</th>
-                    <th>Error Absolut (|e_t|)</th>
+                    <th>MAD / MADE (|e_t|)</th>
                     <th>MAPE (%)</th>
                 </tr>
             </thead>
