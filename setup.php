@@ -203,6 +203,7 @@ $sqlPeramalan = "CREATE TABLE IF NOT EXISTS tbl_riwayat_peramalan (
     hasil          INT DEFAULT NULL,
     akurasi        FLOAT DEFAULT NULL,
     mape           FLOAT DEFAULT NULL,
+    mad            FLOAT DEFAULT NULL,
     target_waktu   VARCHAR(50) DEFAULT NULL,
     detail_json    LONGTEXT DEFAULT NULL
 )";

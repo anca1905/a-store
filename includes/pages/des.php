@@ -14,11 +14,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     $hasil = (int)$_POST['hasil'];
     $akurasi_val = (float)$_POST['akurasi'];
     $mape_val = isset($_POST['mape']) ? (float)$_POST['mape'] : round(max(0, 100 - $akurasi_val), 2);
+    $mad_val = isset($_POST['mad']) ? (float)$_POST['mad'] : 0;
     $target = $conn->real_escape_string($_POST['target_waktu']);
     $detail_json = !empty($_POST['detail_json']) ? "'" . $conn->real_escape_string($_POST['detail_json']) . "'" : "NULL";
     
+    // Auto-migrate kolom mad jika belum ada
+    $checkMadCol = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'mad'");
+    if ($checkMadCol && $checkMadCol->num_rows == 0) {
+        $conn->query("ALTER TABLE tbl_riwayat_peramalan ADD COLUMN mad FLOAT DEFAULT NULL AFTER mape");
+    }
+    
+    $checkMadCol = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'mad'");
+    $hasMadCol = ($checkMadCol && $checkMadCol->num_rows > 0);
     $checkMapeCol = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'mape'");
-    if ($checkMapeCol && $checkMapeCol->num_rows > 0) {
+    $hasMapeCol = ($checkMapeCol && $checkMapeCol->num_rows > 0);
+
+    if ($hasMadCol && $hasMapeCol) {
+        $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi, mape, mad, detail_json) 
+                   VALUES (NOW(), 'barang', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val, $mape_val, $mad_val, $detail_json)";
+    } elseif ($hasMapeCol) {
         $sqlIns = "INSERT INTO tbl_riwayat_peramalan (tanggal_hitung, tipe, referensi, nama_referensi, periode, alpha, target_waktu, hasil, akurasi, mape, detail_json) 
                    VALUES (NOW(), 'barang', '$kb', '$nama', '$periode', $alpha_val, '$target', $hasil, $akurasi_val, $mape_val, $detail_json)";
     } else {
@@ -211,6 +225,8 @@ if ($hitung) {
         
         $sum_mape = 0;
         $count_mape = 0;
+        $sum_mad = 0;
+        $count_mad = 0;
         
         for ($i = 1; $i < $n; $i++) {
             $X_i = $aktual[$i];
@@ -223,8 +239,11 @@ if ($hitung) {
             
             $F[$i] = $a[$i-1] + $b[$i-1] * 1;
             
+            $err = abs($X_i - $F[$i]);
+            $sum_mad += $err;
+            $count_mad++;
+
             if ($X_i > 0) {
-                $err = abs($X_i - $F[$i]);
                 $mape = ($err / $X_i) * 100;
                 $sum_mape += $mape;
                 $count_mape++;
@@ -294,6 +313,7 @@ if ($hitung) {
         }
         
         $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
+        $avg_mad  = ($count_mad > 0) ? round($sum_mad / $count_mad, 2) : 0;
         $akurasi  = round(max(0, 100 - $avg_mape), 1);
         
         if ($avg_mape <= 10) {
@@ -564,21 +584,26 @@ if ($hitung) {
             </div>
             
             <div style="margin-bottom:20px;">
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Evaluasi Model (MAPE)</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;">
-                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Rata-rata MAPE</div>
-                        <div style="font-size:16px; font-weight:800; color:#ea580c; margin-top:2px;"><?= number_format($avg_mape, 2) ?>%</div>
-                        <div style="font-size:10px; color:var(--text-muted);">Tingkat Error</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Evaluasi Model (MAPE &amp; MAD)</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px;">
+                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 6px; border-radius:8px; text-align:center;">
+                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">MAPE</div>
+                        <div style="font-size:15px; font-weight:800; color:#ea580c; margin-top:2px;"><?= number_format($avg_mape, 2) ?>%</div>
+                        <div style="font-size:9px; color:var(--text-muted);">Error Relatif</div>
                     </div>
-                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;">
-                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Kategori Model</div>
-                        <div style="font-size:16px; font-weight:800; color:var(--primary-color); margin-top:2px;"><?= $kualitas ?></div>
-                        <div style="font-size:10px; color:var(--text-muted);">Standar Lewis</div>
+                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 6px; border-radius:8px; text-align:center;">
+                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">MAD / MADE</div>
+                        <div style="font-size:15px; font-weight:800; color:#0284c7; margin-top:2px;"><?= number_format($avg_mad, 2) ?></div>
+                        <div style="font-size:9px; color:var(--text-muted);">Deviasi (Unit)</div>
+                    </div>
+                    <div style="background:var(--bg-body); border:1px solid var(--border-color); padding:8px 6px; border-radius:8px; text-align:center;">
+                        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Kategori</div>
+                        <div style="font-size:13px; font-weight:800; color:var(--primary-color); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= $kualitas ?></div>
+                        <div style="font-size:9px; color:var(--text-muted);">Standar Lewis</div>
                     </div>
                 </div>
                 <div style="font-size:12px; line-height:1.5; color:var(--text-muted);">
-                    Rata-rata kesalahan peramalan (MAPE) adalah <strong><?= number_format($avg_mape, 2) ?>%</strong> (Kategori: <strong><?= $kualitas ?></strong>).
+                    Rata-rata kesalahan peramalan: MAPE <strong><?= number_format($avg_mape, 2) ?>%</strong> (Kategori: <strong><?= $kualitas ?></strong>), MAD <strong><?= number_format($avg_mad, 2) ?> Unit</strong> per <?= strtolower($satuan_data) ?>.
                 </div>
             </div>
 
@@ -636,6 +661,7 @@ if ($hitung) {
                     <input type="hidden" name="hasil" value="<?= $hasilPeramalan ?>">
                     <input type="hidden" name="akurasi" value="<?= max(0, $akurasi) ?>">
                     <input type="hidden" name="mape" value="<?= round($avg_mape, 2) ?>">
+                    <input type="hidden" name="mad" value="<?= round($avg_mad, 2) ?>">
                     <input type="hidden" name="target_waktu" value="<?= htmlspecialchars($label_target_detail) ?>">
                     <?php
                     $history_rows = [];
@@ -677,6 +703,7 @@ if ($hitung) {
                         'alpha' => $alpha,
                         'hasil' => $hasilPeramalan,
                         'avg_mape' => $avg_mape,
+                        'avg_mad' => $avg_mad,
                         'akurasi' => max(0, $akurasi),
                         'kualitas' => $kualitas,
                         'a_t' => isset($a[$n-1]) ? round($a[$n-1], 2) : 0,
@@ -827,8 +854,13 @@ if ($hitung) {
                     Data penjualan aktual <?= $n ?> <?= strtolower($satuan_data) ?> historis sebagai dasar perhitungan parameter pemulusan ganda (Level a_t dan Tren b_t).
                 </p>
             </div>
-            <div style="font-size:12px; color:var(--text-muted); background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px;">
-                Rata-rata MAPE: <strong style="color:#ea580c;"><?= number_format($avg_mape, 2) ?>%</strong> (<?= $kualitas ?>)
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <div style="font-size:12px; color:var(--text-muted); background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px;">
+                    Rata-rata MAD: <strong style="color:#0284c7;"><?= number_format($avg_mad, 2) ?> Unit</strong>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); background:#fff; border:1px solid var(--border-color); padding:5px 12px; border-radius:8px;">
+                    Rata-rata MAPE: <strong style="color:#ea580c;"><?= number_format($avg_mape, 2) ?>%</strong> (<?= $kualitas ?>)
+                </div>
             </div>
         </div>
     </div>
@@ -886,15 +918,22 @@ if ($hitung) {
                     <td colspan="2" style="text-align:right; font-weight:700;">Total Evaluasi:</td>
                     <td style="font-weight:700;"><?= array_sum($aktual) ?></td>
                     <td colspan="5"></td>
-                    <td style="font-weight:700; color:var(--text-main); font-size:13px;"><?= number_format($total_abs_err, 2) ?><br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span></td>
-                    <td style="font-weight:800; color:#ea580c; font-size:13px;"><?= number_format($avg_mape, 2) ?>%<br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Rata-rata MAPE</span></td>
+                    <td style="font-weight:700; color:var(--text-main); font-size:13px; text-align:center;">
+                        <?= number_format($total_abs_err, 2) ?><br>
+                        <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span><br>
+                        <span style="display:inline-block; margin-top:3px; padding:2px 6px; background:#e0f2fe; color:#0369a1; border-radius:4px; font-size:11px; font-weight:700;">MAD: <?= number_format($avg_mad, 2) ?></span>
+                    </td>
+                    <td style="font-weight:800; color:#ea580c; font-size:13px; text-align:center;">
+                        <?= number_format($avg_mape, 2) ?>%<br>
+                        <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Rata-rata MAPE</span>
+                    </td>
                 </tr>
                 <tr style="background:#f1f5f9; font-weight:700;">
                     <td colspan="8" style="text-align:right; padding-right:16px;">
                         <span style="color:var(--text-main); font-size:13px;">Kategori Evaluasi Model (Standar Lewis):</span>
                     </td>
                     <td colspan="2" style="color:var(--primary-color); font-size:14px; text-align:center;">
-                        <strong><?= $kualitas ?></strong> <span style="font-size:11px; font-weight:600; color:#ea580c;">(MAPE <?= number_format($avg_mape, 2) ?>%)</span>
+                        <strong><?= $kualitas ?></strong> <span style="font-size:11px; font-weight:600; color:#ea580c;">(MAPE <?= number_format($avg_mape, 2) ?>%, MAD <?= number_format($avg_mad, 2) ?>)</span>
                     </td>
                 </tr>
             </tfoot>
@@ -903,8 +942,9 @@ if ($hitung) {
     <div style="padding:10px 16px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.6;">
         <i class="fa-solid fa-circle-info" style="color:var(--primary-color); margin-right:4px;"></i>
         <strong>Keterangan Rumus &amp; Evaluasi Model:</strong><br>
-        &bull; <strong>Error Absolut (|e_t|)</strong>: |Aktual (X_t) - Peramalan (F_t)|.<br>
-        &bull; <strong>MAPE per Periode</strong>: (|e_t| / X_t) &times; 100%. Periode ke-1 merupakan inisialisasi ($S'_0, S''_0$) sehingga evaluasi dimulai periode ke-2.<br>
+        &bull; <strong>Error Absolut (|e_t|)</strong>: Selisih mutlak antara penjualan aktual dan peramalan (|Aktual (X_t) - Peramalan (F_t)|).<br>
+        &bull; <strong>MAD (Mean Absolute Deviation / MADE)</strong>: Rata-rata error absolut (&Sigma; |e_t| / n) untuk mengukur rata-rata melesetnya peramalan dalam satuan unit riil produk (pada peramalan ini: <strong><?= number_format($avg_mad, 2) ?> Unit</strong>).<br>
+        &bull; <strong>MAPE per Periode</strong>: Persentase kesalahan relatif (|e_t| / X_t) &times; 100%. Periode ke-1 merupakan inisialisasi ($S'_0, S''_0$) sehingga evaluasi dimulai periode ke-2.<br>
         &bull; <strong>Rata-rata MAPE</strong>: Rata-rata persentase kesalahan dari <?= $count_mape ?> periode uji yang memiliki transaksi penjualan.<br>
         &bull; <strong>Kategori Model (Standar Lewis)</strong>: &le;10% Sangat Baik, 10-20% Baik, 20-50% Cukup/Wajar, &gt;50% Kurang/Tidak Akurat (Kategori peramalan ini: <strong><?= $kualitas ?></strong>).
     </div>
@@ -931,7 +971,7 @@ if ($hitung) {
                     <th>Periode</th>
                     <th>Alpha</th>
                     <th>Hasil Peramalan</th>
-                    <th>MAPE</th>
+                    <th>Evaluasi (MAPE / MAD)</th>
                     <th style="text-align:center;">Aksi</th>
                 </tr>
             </thead>
@@ -972,8 +1012,22 @@ if ($hitung) {
                     } else {
                         $mapeFormatted = '-';
                     }
+                    
+                    $madValDb = $rh['mad'] ?? ($detRow['avg_mad'] ?? null);
+                    if ($madValDb !== null && $madValDb !== '') {
+                        $madFormatted = number_format((float)$madValDb, 2) . ' Unit';
+                    } elseif (!empty($detRow['total_abs_err']) && !empty($detRow['history_rows']) && count($detRow['history_rows']) > 1) {
+                        $madFormatted = number_format((float)$detRow['total_abs_err'] / (count($detRow['history_rows']) - 1), 2) . ' Unit';
+                    } else {
+                        $madFormatted = '-';
+                    }
                     ?>
-                    <td style="color:#ea580c; font-weight:700;"><?= $mapeFormatted ?></td>
+                    <td style="font-weight:700;">
+                        <span style="color:#ea580c;"><?= $mapeFormatted ?></span>
+                        <?php if ($madFormatted !== '-'): ?>
+                            <br><span style="font-size:11px; color:#0284c7; font-weight:600;">MAD: <?= $madFormatted ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td style="white-space:nowrap; text-align:center;">
                         <a href="<?= $linkKalkulator ?>" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-right:4px; text-decoration:none; background:#111; color:#fff;" title="Buka Detail Perhitungan Penuh di Halaman (Bukan Modal)">
                             <i class="fa-solid fa-calculator"></i> Buka Detail
@@ -1215,7 +1269,11 @@ function bukaModalDetailRiwayat(id) {
     document.getElementById('mdr_hasil').innerHTML = Number(data.hasil).toLocaleString('id-ID') + ' <span style="font-size:13px; font-weight:600; color:var(--text-main);">Unit</span>';
     const kualitasText = (detail && detail.kualitas) ? ` (${detail.kualitas})` : '';
     const mapeValDisplay = (detail && detail.avg_mape !== undefined) ? detail.avg_mape : ((data.mape) ? data.mape : null);
-    document.getElementById('mdr_akurasi').innerHTML = (mapeValDisplay !== null ? 'MAPE: ' + mapeValDisplay + '%' : '') + kualitasText;
+    const madValDisplay = (detail && detail.avg_mad !== undefined) ? detail.avg_mad : ((data.mad) ? data.mad : null);
+    let evalText = '';
+    if (mapeValDisplay !== null) evalText += `MAPE: ${mapeValDisplay}% `;
+    if (madValDisplay !== null) evalText += `| MAD: ${madValDisplay} Unit `;
+    document.getElementById('mdr_akurasi').innerHTML = evalText + kualitasText;
     
     document.getElementById('mdr_alpha').textContent = data.alpha;
     const satuanD = (detail && detail.satuan_data) ? detail.satuan_data : (data.target_waktu.indexOf('Minggu') !== -1 ? 'Hari' : 'Minggu');
@@ -1271,6 +1329,8 @@ function bukaModalDetailRiwayat(id) {
         });
 
         const avgMape = (detail.avg_mape !== undefined) ? detail.avg_mape : ((countMape > 0) ? (sumMape / countMape).toFixed(2) : 0);
+        const countEval = Math.max(1, detail.history_rows.length - 1);
+        const avgMad = (detail.avg_mad !== undefined) ? Number(detail.avg_mad).toFixed(2) : (totalErr / countEval).toFixed(2);
         const akurasiVal = (detail.akurasi !== undefined) ? detail.akurasi : data.akurasi;
         const kualitasVal = (detail.kualitas) ? detail.kualitas : '';
 
@@ -1279,15 +1339,22 @@ function bukaModalDetailRiwayat(id) {
                 <td colspan="2" style="text-align:right;">Total Evaluasi:</td>
                 <td style="font-weight:700;">${totalAkt}</td>
                 <td colspan="5"></td>
-                <td style="font-weight:700; font-size:13px;">${totalErr.toFixed(2)}<br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span></td>
-                <td style="font-weight:800; color:#ea580c; font-size:13px;">${Number(avgMape).toFixed(2)}%<br><span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Rata-rata MAPE</span></td>
+                <td style="font-weight:700; font-size:13px; text-align:center;">
+                    ${totalErr.toFixed(2)}<br>
+                    <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">&Sigma; |e_t|</span><br>
+                    <span style="display:inline-block; margin-top:3px; padding:2px 6px; background:#e0f2fe; color:#0369a1; border-radius:4px; font-size:11px; font-weight:700;">MAD: ${avgMad}</span>
+                </td>
+                <td style="font-weight:800; color:#ea580c; font-size:13px; text-align:center;">
+                    ${Number(avgMape).toFixed(2)}%<br>
+                    <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">Rata-rata MAPE</span>
+                </td>
             </tr>
             <tr style="background:#f1f5f9; font-weight:700;">
                 <td colspan="8" style="text-align:right; padding-right:16px;">
                     <span style="font-size:13px;">Kategori Evaluasi Model (Standar Lewis):</span>
                 </td>
                 <td colspan="2" style="color:var(--primary-color); font-size:14px; text-align:center;">
-                    <strong>${kualitasVal}</strong> <span style="font-size:11px; font-weight:600; color:#ea580c;">(MAPE ${Number(avgMape).toFixed(2)}%)</span>
+                    <strong>${kualitasVal}</strong> <span style="font-size:11px; font-weight:600; color:#ea580c;">(MAPE ${Number(avgMape).toFixed(2)}%, MAD ${avgMad})</span>
                 </td>
             </tr>
         `;
@@ -1458,18 +1525,20 @@ function cetakModalRiwayat() {
                 <td style="padding:6px; border:1px solid #cbd5e1; text-align:center;">${mape}</td>
             </tr>`;
         });
+        const countEval = Math.max(1, detail.history_rows.length - 1);
+        const avgMadVal = (detail.avg_mad !== undefined) ? Number(detail.avg_mad).toFixed(2) : (totalErr / countEval).toFixed(2);
         const avgMapeVal = detail.avg_mape !== undefined ? Number(detail.avg_mape).toFixed(2) + '%' : '-';
         histRowsHtml += `
             <tr style="background:#f8fafc; font-weight:bold;">
                 <td colspan="2" style="text-align:right; padding:6px; border:1px solid #cbd5e1;">Total Evaluasi:</td>
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalAkt}</td>
                 <td colspan="5" style="border:1px solid #cbd5e1;"></td>
-                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalErr.toFixed(2)}</td>
+                <td style="text-align:center; padding:6px; border:1px solid #cbd5e1;">${totalErr.toFixed(2)}<br><small style="color:#0284c7; font-weight:bold;">MAD: ${avgMadVal}</small></td>
                 <td style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#ea580c;">${avgMapeVal}</td>
             </tr>
             <tr style="background:#f1f5f9; font-weight:bold;">
                 <td colspan="8" style="text-align:right; padding:6px 12px; border:1px solid #cbd5e1;">Kategori Evaluasi Model (Standar Lewis):</td>
-                <td colspan="2" style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#0284c7; font-size:13px;">${detail.kualitas ? detail.kualitas : '-'} ${detail.avg_mape !== undefined ? '(MAPE ' + detail.avg_mape + '%)' : ''}</td>
+                <td colspan="2" style="text-align:center; padding:6px; border:1px solid #cbd5e1; color:#0284c7; font-size:13px;">${detail.kualitas ? detail.kualitas : '-'} (MAPE ${detail.avg_mape !== undefined ? detail.avg_mape + '%' : '-'}, MAD ${avgMadVal})</td>
             </tr>
         `;
     }
@@ -1533,11 +1602,11 @@ function cetakModalRiwayat() {
             <div><strong>Objek Analisis:</strong> ${data.referensi} — ${data.nama_referensi}</div>
             <div><strong>Target Proyeksi:</strong> ${data.target_waktu}</div>
             <div><strong>Parameter Model:</strong> Alpha (α) = ${data.alpha} | Periode = ${data.periode}</div>
-            <div><strong>Hasil &amp; Evaluasi:</strong> <span style="font-size:13px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '%' : ''}${detail && detail.kualitas ? ' - Kategori: ' + detail.kualitas : ''})</div>
+            <div><strong>Hasil &amp; Evaluasi:</strong> <span style="font-size:13px; font-weight:bold; color:#0284c7;">${Number(data.hasil).toLocaleString('id-ID')} Unit</span> (${detail && detail.avg_mape !== undefined ? 'MAPE: ' + detail.avg_mape + '%' : ''}${avgMadVal !== '-' ? ' | MAD: ' + avgMadVal + ' Unit' : ''}${detail && detail.kualitas ? ' - Kategori: ' + detail.kualitas : ''})</div>
         </div>
 
         ${histRowsHtml ? `
-        <h4>1. Audit Detail Perhitungan DES &amp; Evaluasi MAPE (Data Historis):</h4>
+        <h4>1. Audit Detail Perhitungan DES &amp; Evaluasi Akurasi MAPE &amp; MAD (Data Historis):</h4>
         <table>
             <thead>
                 <tr>

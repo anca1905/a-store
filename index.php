@@ -33,6 +33,10 @@ try {
     if ($checkMapeCol && $checkMapeCol->num_rows == 0) {
         $conn->query("ALTER TABLE tbl_riwayat_peramalan ADD COLUMN mape FLOAT DEFAULT NULL AFTER akurasi");
     }
+    $checkMadCol = $conn->query("SHOW COLUMNS FROM tbl_riwayat_peramalan LIKE 'mad'");
+    if ($checkMadCol && $checkMadCol->num_rows == 0) {
+        $conn->query("ALTER TABLE tbl_riwayat_peramalan ADD COLUMN mad FLOAT DEFAULT NULL AFTER mape");
+    }
 } catch (Exception $e) {}
 
 // AJAX: Ambil detail perhitungan historis untuk modal riwayat peramalan
@@ -52,6 +56,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'ajax_get_riwayat_detail' && i
             'success' => true,
             'history_rows' => $det['history_rows'],
             'avg_mape' => $det['avg_mape'] ?? null,
+            'avg_mad' => $det['avg_mad'] ?? ($rRow['mad'] ?? null),
             'total_abs_err' => $det['total_abs_err'] ?? null,
             'total_aktual' => $det['total_aktual'] ?? null
         ]);
@@ -209,8 +214,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'ajax_get_riwayat_detail' && i
     }
     
     $avg_mape = ($count_mape > 0) ? round($sum_mape / $count_mape, 2) : 0;
+    $count_eval = $n - 1;
+    $avg_mad  = ($count_eval > 0) ? round($total_abs_err / $count_eval, 2) : 0;
     $det['history_rows'] = $history_rows;
     $det['avg_mape'] = $avg_mape;
+    $det['avg_mad'] = $avg_mad;
     $det['total_abs_err'] = round($total_abs_err, 2);
     $det['total_aktual'] = array_sum($aktual);
     
@@ -221,6 +229,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'ajax_get_riwayat_detail' && i
         'success' => true,
         'history_rows' => $history_rows,
         'avg_mape' => $avg_mape,
+        'avg_mad' => $avg_mad,
         'total_abs_err' => round($total_abs_err, 2),
         'total_aktual' => array_sum($aktual)
     ]);
