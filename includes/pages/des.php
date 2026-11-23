@@ -877,7 +877,7 @@ if ($hitung) {
                     <th>a_t</th>
                     <th>b_t</th>
                     <th>Peramalan (F_t)</th>
-                    <th>MAD / MADE (|e_t|)</th>
+                    <th>MAD (|e_t|)</th>
                     <th>MAPE (%)</th>
                 </tr>
             </thead>
@@ -947,7 +947,7 @@ if ($hitung) {
     <div style="padding:10px 16px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.6;">
         <i class="fa-solid fa-circle-info" style="color:var(--primary-color); margin-right:4px;"></i>
         <strong>Keterangan Rumus &amp; Evaluasi Model:</strong><br>
-        &bull; <strong>MAD / MADE (|e_t|)</strong>: Nilai selisih absolut per periode (|Aktual (X_t) - Peramalan (F_t)|).<br>
+        &bull; <strong>MAD (|e_t|)</strong>: Nilai selisih absolut per periode (|Aktual (X_t) - Peramalan (F_t)|).<br>
         &bull; <strong>Rata-rata MAD / MADE</strong>: Rata-rata error absolut (&Sigma; |e_t| / n) untuk mengukur rata-rata melesetnya peramalan dalam satuan unit riil produk (pada peramalan ini: <strong><?= number_format($avg_mad, 2) ?> Unit</strong>).<br>
         &bull; <strong>MAPE per Periode</strong>: Persentase kesalahan relatif (|e_t| / X_t) &times; 100%. Periode ke-1 merupakan inisialisasi ($S'_0, S''_0$) sehingga evaluasi dimulai periode ke-2.<br>
         &bull; <strong>Rata-rata MAPE</strong>: Rata-rata persentase kesalahan dari <?= $count_mape ?> periode uji yang memiliki transaksi penjualan.<br>
@@ -1138,7 +1138,7 @@ if ($hitung) {
                             Audit Detail Perhitungan DES &amp; Evaluasi MAPE (Data Historis)
                         </div>
                         <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-                            Data penjualan historis aktual beserta parameter pemulusan ganda, peramalan F_t, evaluasi MAD / MADE (|e_t|), dan MAPE.
+                            Data penjualan historis aktual beserta parameter pemulusan ganda, peramalan F_t, evaluasi MAD (|e_t|), dan MAPE.
                         </div>
                     </div>
                 </div>
@@ -1154,7 +1154,7 @@ if ($hitung) {
                                 <th>a_t</th>
                                 <th>b_t</th>
                                 <th>Peramalan (F_t)</th>
-                                <th>MAD / MADE (|e_t|)</th>
+                                <th>MAD (|e_t|)</th>
                                 <th>MAPE (%)</th>
                             </tr>
                         </thead>
@@ -1167,7 +1167,7 @@ if ($hitung) {
                     </table>
                 </div>
                 <div style="padding:8px 14px; background:#fafafa; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); line-height:1.5;">
-                    &bull; <strong>MAD / MADE (|e_t|)</strong> = |Aktual (X_t) - Peramalan (F_t)| &bull; <strong>MAPE</strong> = (|e_t| / X_t) &times; 100% &bull; Periode ke-1 adalah inisialisasi ($S'_0, S''_0$).
+                    &bull; <strong>MAD (|e_t|)</strong> = |Aktual (X_t) - Peramalan (F_t)| &bull; <strong>MAPE</strong> = (|e_t| / X_t) &times; 100% &bull; Periode ke-1 adalah inisialisasi ($S'_0, S''_0$).
                 </div>
             </div>
 
@@ -1632,7 +1632,7 @@ function cetakModalRiwayat() {
                     <th>a_t</th>
                     <th>b_t</th>
                     <th>Peramalan (F_t)</th>
-                    <th>MAD / MADE (|e_t|)</th>
+                    <th>MAD (|e_t|)</th>
                     <th>MAPE (%)</th>
                 </tr>
             </thead>
